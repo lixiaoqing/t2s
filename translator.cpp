@@ -24,7 +24,7 @@ SentenceTranslator::SentenceTranslator(const Models &i_models, const Parameter &
 		candbeam_matrix.at(beg).resize(src_sen_len-beg);
 	}
 
-	fill_matrix_with_matched_rules();
+	//fill_matrix_with_matched_rules();
 }
 
 SentenceTranslator::~SentenceTranslator()
@@ -50,6 +50,7 @@ SentenceTranslator::~SentenceTranslator()
               a.2) 如果该跨度包含多个单词, 则不作处理
               b) 如果某个跨度匹配到了规则, 则根据规则生成候选
 ************************************************************************************* */
+/*
 void SentenceTranslator::fill_matrix_with_matched_rules()
 {
 	for (size_t beg=0;beg<src_sen_len;beg++)
@@ -94,6 +95,7 @@ void SentenceTranslator::fill_matrix_with_matched_rules()
 		}
 	}
 }
+*/
 
 /**************************************************************************************
  1. 函数功能: 计算调序模型打分

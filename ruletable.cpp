@@ -11,32 +11,40 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 	short int src_rule_len=0;
 	while(fin.read((char*)&src_rule_len,sizeof(short int)))
 	{
-		vector<int> src_wids;
-		src_wids.resize(src_rule_len);
-		fin.read((char*)&src_wids[0],sizeof(int)*src_rule_len);
+		// 读取规则源端节点的id序列, 规则源端节点为规则源端句法树片段的一层, 存储为规则Trie树中的一个节点
+		vector<int> node_ids;
+		node_ids.resize(src_rule_len);
+		fin.read((char*)&node_ids[0],sizeof(int)*src_rule_len);
 
+		//树到树的规则使用, 临时用一下
+		int tgt_treefrag_root;
+		fin.read((char*)&tgt_treefrag_root,sizeof(int));
+
+		// 读取规则目标端的叶节点序列以及非终结符的对齐
 		short int tgt_rule_len=0;
 		fin.read((char*)&tgt_rule_len,sizeof(short int));
-		if (tgt_rule_len > RULE_LEN_MAX)
-			continue;
 		TgtRule tgt_rule;
 		tgt_rule.word_num = tgt_rule_len;
 		tgt_rule.wids.resize(tgt_rule_len);
 		fin.read((char*)&(tgt_rule.wids[0]),sizeof(int)*tgt_rule_len);
+		tgt_rule.aligned_src_positions.resize(tgt_rule_len);
+		fin.read((char*)&(tgt_rule.aligned_src_positions[0]),sizeof(int)*tgt_rule_len);
+		
+		// 规则目标端的词汇个数
+		tgt_rule.word_num = 0;
+		for (const auto pos : tgt_rule.aligned_src_positions)
+		{
+			if (pos == -1)
+				tgt_rule.word_num++;
+		}
 
+		// 规则的6个翻译概率
 		tgt_rule.probs.resize(PROB_NUM);
 		fin.read((char*)&(tgt_rule.probs[0]),sizeof(double)*PROB_NUM);
-		for(auto &e : tgt_rule.probs)
-		{
-			if( abs(e) <= numeric_limits<double>::epsilon() )
-			{
-				e = LogP_PseudoZero;
-			}
-			else
-			{
-				e = log10(e);
-			}
-		}
+
+		// 规则类型
+		fin.read((char*)&tgt_rule.is_composed_rule,sizeof(short int));
+		fin.read((char*)&tgt_rule.is_lexical_rule,sizeof(short int));
 
 		if (LOAD_ALIGNMENT == true)
 		{
@@ -65,46 +73,26 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 			tgt_rule.score += tgt_rule.probs[i]*weight.trans[i];
 		}
 
-		add_rule_to_trie(src_wids,tgt_rule);
+		add_rule_to_trie(node_ids,tgt_rule);
 	}
 	fin.close();
 	cout<<"load rule table file "<<rule_table_file<<" over\n";
 }
 
-vector<vector<TgtRule>* > RuleTable::find_matched_rules_for_prefixes(const vector<int> &src_wids,const size_t pos)
+vector<vector<TgtRule>* > RuleTable::find_matched_rules_for_treenode(const TreeNode* cur_node)
 {
 	vector<vector<TgtRule>* > matched_rules_for_prefixes;
 	RuleTrieNode* current = root;
-	for (size_t i=pos;i<src_wids.size() && i-pos<RULE_LEN_MAX;i++)
-	{
-		auto it = current->id2subtrie_map.find(src_wids.at(i));
-		if (it != current->id2subtrie_map.end())
-		{
-			current = it->second;
-			if (current->tgt_rules.size() == 0)
-			{
-				matched_rules_for_prefixes.push_back(NULL);
-			}
-			else
-			{
-				matched_rules_for_prefixes.push_back(&(current->tgt_rules));
-			}
-		}
-		else
-		{
-			matched_rules_for_prefixes.push_back(NULL);
-			return matched_rules_for_prefixes;
-		}
-	}
+	// TODO
 	return matched_rules_for_prefixes;
 }
 
-void RuleTable::add_rule_to_trie(const vector<int> &src_wids, const TgtRule &tgt_rule)
+void RuleTable::add_rule_to_trie(const vector<int> &node_ids, const TgtRule &tgt_rule)
 {
 	RuleTrieNode* current = root;
-	for (const auto &wid : src_wids)
+	for (const auto &node_id : node_ids)
 	{        
-		auto it = current->id2subtrie_map.find(wid);
+		auto it = current->id2subtrie_map.find(node_id);
 		if ( it != current->id2subtrie_map.end() )
 		{
 			current = it->second;
@@ -112,7 +100,7 @@ void RuleTable::add_rule_to_trie(const vector<int> &src_wids, const TgtRule &tgt
 		else
 		{
 			RuleTrieNode* tmp = new RuleTrieNode();
-			current->id2subtrie_map.insert(make_pair(wid,tmp));
+			current->id2subtrie_map.insert(make_pair(node_id,tmp));
 			current = tmp;
 		}
 	}

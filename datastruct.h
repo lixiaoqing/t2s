@@ -84,6 +84,11 @@ class CandBeam
 
 typedef priority_queue<Cand*, vector<Cand*>, smaller> Candpq;
 
+// 源端句法树节点
+struct TreeNode
+{
+};
+
 struct TuneInfo
 {
 	size_t sen_id;

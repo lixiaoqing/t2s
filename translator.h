@@ -3,7 +3,6 @@
 #include "vocab.h"
 #include "ruletable.h"
 #include "lm.h"
-#include "maxent.h"
 #include "myutils.h"
 
 struct Models
@@ -11,7 +10,6 @@ struct Models
 	Vocab *src_vocab;
 	Vocab *tgt_vocab;
 	RuleTable *ruletable;
-	MaxentModel *reorder_model;
 	LanguageModel *lm_model;
 };
 
@@ -25,7 +23,6 @@ class SentenceTranslator
 		vector<string> get_applied_rules(size_t sen_id);
 	private:
 		void fill_matrix_with_matched_rules();
-		pair<double,double> cal_reorder_score(const Cand *cand_lhs,const Cand *cand_rhs);
 		void generate_kbest_for_span(const size_t beg,const size_t span);
 		void merge_subcands_and_add_to_pq(Cand *cand_lhs, Cand *cand_rhs,int rank_lhs,int rank_rhs,Candpq &new_cands_by_mergence);
 		void add_neighbours_to_pq(Cand *cur_cand, Candpq &new_cands_by_mergence);
@@ -36,7 +33,6 @@ class SentenceTranslator
 		Vocab *src_vocab;
 		Vocab *tgt_vocab;
 		RuleTable *ruletable;
-		MaxentModel *reorder_model;
 		LanguageModel *lm_model;
 		Parameter para;
 		Weight feature_weight;

@@ -11,16 +11,12 @@ void Vocab::load_vocab(const string &vocab_file)
 	string line;
 	while(getline(fin,line))
 	{
-		istringstream buff(line);
-		string word;
-		int index;
-		if(!(buff>>word>>index))
-		{
-			cerr<<"reading word and index error!"<<endl;
-			return;
-		}
-		word_list.push_back(word);
-		word2id.insert(make_pair(word,index));
+		TrimLine(line);
+		vector<string> vs;
+		string sep(" ||| ");
+		Split(vs,line,sep);
+		word_list.push_back(vs[0]);
+		word2id.insert(make_pair(vs[0],stoi(vs[1])));
 	}
 }
 

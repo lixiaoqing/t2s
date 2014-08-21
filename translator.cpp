@@ -5,7 +5,6 @@ SentenceTranslator::SentenceTranslator(const Models &i_models, const Parameter &
 	src_vocab = i_models.src_vocab;
 	tgt_vocab = i_models.tgt_vocab;
 	ruletable = i_models.ruletable;
-	reorder_model = i_models.reorder_model;
 	lm_model = i_models.lm_model;
 	para = i_para;
 	feature_weight = i_weight;
@@ -97,38 +96,6 @@ void SentenceTranslator::fill_matrix_with_matched_rules()
 }
 */
 
-/**************************************************************************************
- 1. 函数功能: 计算调序模型打分
- 2. 入口参数: 生成当前候选的左候选以及右候选,左右是指在当前候选中的位置
- 3. 出口参数: 顺序以及逆序调序概率
- 4. 算法简介: 使用如下8个特征估计概率
-              {左候选, 右候选} X {源端, 目标端} X {首词, 尾词}
-************************************************************************************* */
-pair<double,double> SentenceTranslator::cal_reorder_score(const Cand* cand_lhs,const Cand* cand_rhs)
-{
-	int src_pos_beg_lhs = cand_lhs->beg;
-	int src_pos_end_lhs = cand_lhs->end;
-	int src_pos_beg_rhs = cand_rhs->beg;
-	int src_pos_end_rhs = cand_rhs->end;
-	int tgt_wid_beg_lhs = cand_lhs->tgt_wids.at(0);
-	int tgt_wid_end_lhs = cand_lhs->tgt_wids.at(cand_lhs->tgt_wids.size()-1);
-	int tgt_wid_beg_rhs = cand_rhs->tgt_wids.at(0);
-	int tgt_wid_end_rhs = cand_rhs->tgt_wids.at(cand_rhs->tgt_wids.size()-1);
-	vector<string> feature_vec;
-	feature_vec.resize(8);
-	feature_vec.at(0) = "c11=" + src_vocab->get_word(src_wids.at(src_pos_beg_lhs));
-	feature_vec.at(1) = "c12=" + src_vocab->get_word(src_wids.at(src_pos_end_lhs));
-	feature_vec.at(2) = "c21=" + src_vocab->get_word(src_wids.at(src_pos_beg_rhs));
-	feature_vec.at(3) = "c22=" + src_vocab->get_word(src_wids.at(src_pos_end_rhs));
-	feature_vec.at(4) = "e11=" + tgt_vocab->get_word(tgt_wid_beg_lhs);
-	feature_vec.at(5) = "e12=" + tgt_vocab->get_word(tgt_wid_end_lhs);
-	feature_vec.at(6) = "e21=" + tgt_vocab->get_word(tgt_wid_beg_rhs);
-	feature_vec.at(7) = "e22=" + tgt_vocab->get_word(tgt_wid_end_rhs);
-	vector<double> reorder_prob_vec;
-	reorder_model->eval_all(reorder_prob_vec,feature_vec);
-	return make_pair(reorder_prob_vec[reorder_model->get_tagid("straight")],reorder_prob_vec[reorder_model->get_tagid("inverted")]);
-}
-
 string SentenceTranslator::words_to_str(vector<int> wids, bool drop_unk)
 {
 		string output = "";
@@ -158,8 +125,6 @@ vector<TuneInfo> SentenceTranslator::get_tune_info(size_t sen_id)
 			tune_info.feature_values.push_back(candbeam.at(i)->trans_probs.at(j));
 		}
 		tune_info.feature_values.push_back(candbeam.at(i)->lm_prob);
-		tune_info.feature_values.push_back(candbeam.at(i)->mono_reorder_prob);
-		tune_info.feature_values.push_back(candbeam.at(i)->swap_reorder_prob);
 		tune_info.feature_values.push_back(candbeam.at(i)->tgt_word_num);
 		tune_info.feature_values.push_back(candbeam.at(i)->phrase_num);
 		tune_info.total_score = candbeam.at(i)->score;
@@ -301,14 +266,6 @@ void SentenceTranslator::generate_kbest_for_span(const size_t beg,const size_t s
 ************************************************************************************* */
 void SentenceTranslator::merge_subcands_and_add_to_pq(Cand* cand_lhs, Cand* cand_rhs,int rank_lhs,int rank_rhs,Candpq &candpq_merge)
 {
-	double mono_reorder_prob = 0;
-	double swap_reorder_prob = 0;
-	if (cand_rhs->end - cand_lhs->beg < para.REORDER_WINDOW)
-	{
-		pair<double,double> reorder_probs = cal_reorder_score(cand_lhs,cand_rhs);
-		mono_reorder_prob = reorder_probs.first;
-		swap_reorder_prob = reorder_probs.second;
-	}
 	
 	Cand* cand_mono = new Cand;
 	cand_mono->beg = cand_lhs->beg;
@@ -316,8 +273,6 @@ void SentenceTranslator::merge_subcands_and_add_to_pq(Cand* cand_lhs, Cand* cand
 	cand_mono->mid = cand_rhs->beg;
 	cand_mono->tgt_word_num = cand_lhs->tgt_word_num + cand_rhs->tgt_word_num;
 	cand_mono->phrase_num = cand_lhs->phrase_num + cand_rhs->phrase_num;
-	cand_mono->mono_reorder_prob = cand_lhs->mono_reorder_prob + cand_rhs->mono_reorder_prob + mono_reorder_prob;
-	cand_mono->swap_reorder_prob = cand_lhs->swap_reorder_prob + cand_rhs->swap_reorder_prob;
 	cand_mono->rank_lhs = rank_lhs;
 	cand_mono->rank_rhs = rank_rhs;
 	cand_mono->child_lhs = cand_lhs;
@@ -330,25 +285,9 @@ void SentenceTranslator::merge_subcands_and_add_to_pq(Cand* cand_lhs, Cand* cand
 	}
 	double increased_lm_prob = lm_model->cal_increased_lm_score(cand_mono);
 	cand_mono->lm_prob = cand_lhs->lm_prob + cand_rhs->lm_prob + increased_lm_prob;
-	cand_mono->score = cand_lhs->score + cand_rhs->score 
-		           + feature_weight.lm*increased_lm_prob + feature_weight.reorder_mono*mono_reorder_prob;
+	cand_mono->score = cand_lhs->score + cand_rhs->score + feature_weight.lm*increased_lm_prob;
 	candpq_merge.push(cand_mono);
 
-	if (cand_rhs->end - cand_lhs->beg >= para.REORDER_WINDOW)
-		return;
-	Cand* cand_swap = new Cand;
-	*cand_swap = *cand_mono;
-	cand_swap->child_lhs = cand_rhs;
-	cand_swap->child_rhs = cand_lhs;
-	cand_swap->tgt_wids = cand_rhs->tgt_wids;
-	cand_swap->tgt_wids.insert(cand_swap->tgt_wids.end(),cand_lhs->tgt_wids.begin(),cand_lhs->tgt_wids.end());
-	cand_swap->mono_reorder_prob = cand_lhs->mono_reorder_prob + cand_rhs->mono_reorder_prob;
-	cand_swap->swap_reorder_prob = cand_lhs->swap_reorder_prob + cand_rhs->swap_reorder_prob + swap_reorder_prob;
-	increased_lm_prob = lm_model->cal_increased_lm_score(cand_swap);
-	cand_swap->lm_prob = cand_lhs->lm_prob + cand_rhs->lm_prob + increased_lm_prob;
-	cand_swap->score = cand_lhs->score + cand_rhs->score 
-		           + feature_weight.lm*increased_lm_prob + feature_weight.reorder_mono*swap_reorder_prob;
-	candpq_merge.push(cand_swap);
 }
 
 /**************************************************************************************

@@ -19,8 +19,6 @@ struct Cand
 	double score;				//当前候选的总得分
 	vector<double> trans_probs;	//翻译概率
 	double lm_prob;
-	double mono_reorder_prob;
-	double swap_reorder_prob;
 
 	//合并信息,记录当前候选是由两个子候选合并得来时的相关信息
 	int mid;					//记录两个子候选在源语言中的交界位置
@@ -44,8 +42,6 @@ struct Cand
 		score = 0.0;
 		trans_probs.clear();
 		lm_prob = 0.0;
-		mono_reorder_prob = 0.0;
-		swap_reorder_prob = 0.0;
 
 		mid = -1;
 		rank_lhs = 0;
@@ -106,7 +102,6 @@ struct Filenames
 	string tgt_vocab_file;
 	string rule_table_file;
 	string lm_file;
-	string reorder_model_file;
 };
 
 struct Parameter
@@ -115,7 +110,6 @@ struct Parameter
 	size_t SEN_THREAD_NUM;				//句子级并行数
 	size_t SPAN_THREAD_NUM;				//span级并行数
 	size_t NBEST_NUM;
-	size_t REORDER_WINDOW;     			//最大调序范围
 	size_t RULE_NUM_LIMIT;		      	//源端相同的情况下最多能加载的规则数
 	bool PRINT_NBEST;
 	bool DUMP_RULE;						//是否输出所使用的规则
@@ -126,8 +120,6 @@ struct Weight
 {
 	vector<double> trans;
 	double lm;
-	double reorder_mono;
-	double reorder_swap;
 	double len;							//译文的单词数
 	double phrase_num;					//源端被切成的短语数
 };

@@ -48,11 +48,6 @@ void read_config(Filenames &fns,Parameter &para, Weight &weight, const string &c
 			getline(fin,line);
 			fns.lm_file = line;
 		}
-		else if (line == "[reorder-model-file]")
-		{
-			getline(fin,line);
-			fns.reorder_model_file = line;
-		}
 		else if (line == "[BEAM-SIZE]")
 		{
 			getline(fin,line);
@@ -72,11 +67,6 @@ void read_config(Filenames &fns,Parameter &para, Weight &weight, const string &c
 		{
 			getline(fin,line);
 			para.NBEST_NUM = stoi(line);
-		}
-		else if (line == "[REORDER-WINDOW]")
-		{
-			getline(fin,line);
-			para.REORDER_WINDOW = stoi(line);
 		}
 		else if (line == "[RULE-NUM-LIMIT]")
 		{
@@ -120,14 +110,6 @@ void read_config(Filenames &fns,Parameter &para, Weight &weight, const string &c
 				else if(feature == "lm")
 				{
 					ss>>weight.lm;
-				}
-				else if(feature == "reorder-mono")
-				{
-					ss>>weight.reorder_mono;
-				}
-				else if(feature == "reorder-swap")
-				{
-					ss>>weight.reorder_swap;
 				}
 				else if(feature == "phrase-num")
 				{
@@ -253,14 +235,14 @@ int main( int argc, char *argv[])
 
 	Vocab *src_vocab = new Vocab(fns.src_vocab_file);
 	Vocab *tgt_vocab = new Vocab(fns.tgt_vocab_file);
-	RuleTable *ruletable = new RuleTable(para.RULE_NUM_LIMIT,para.LOAD_ALIGNMENT,weight,fns.rule_table_file);
-	MaxentModel *reorder_model = new MaxentModel(fns.reorder_model_file);
+	RuleTable *ruletable = new RuleTable(para.RULE_NUM_LIMIT,para.LOAD_ALIGNMENT,weight,fns.rule_table_file,src_vocab,tgt_vocab);
+	return 0;
 	LanguageModel *lm_model = new LanguageModel(fns.lm_file,tgt_vocab);
 
 	b = clock();
 	cout<<"loading time: "<<double(b-a)/CLOCKS_PER_SEC<<endl;
 
-	Models models = {src_vocab,tgt_vocab,ruletable,reorder_model,lm_model};
+	Models models = {src_vocab,tgt_vocab,ruletable,lm_model};
 	translate_file(models,para,weight,fns.input_file,fns.output_file);
 	b = clock();
 	cout<<"time cost: "<<double(b-a)/CLOCKS_PER_SEC<<endl;

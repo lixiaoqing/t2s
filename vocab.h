@@ -2,6 +2,7 @@
 #define VOCAB_H
 
 #include "stdafx.h"
+#include "myutils.h"
 
 class Vocab
 {

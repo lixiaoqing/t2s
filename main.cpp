@@ -163,7 +163,7 @@ void translate_file(const Models &models, const Parameter &para, const Weight &w
 	output_sen.resize(sen_num);
 	nbest_tune_info_list.resize(sen_num);
 	applied_rules_list.resize(sen_num);
-#pragma omp parallel for num_threads(para.SEN_THREAD_NUM)
+//#pragma omp parallel for num_threads(para.SEN_THREAD_NUM)
 	for (size_t i=0;i<sen_num;i++)
 	{
 		SentenceTranslator sen_translator(models,para,weight,input_sen.at(i));
@@ -236,7 +236,6 @@ int main( int argc, char *argv[])
 	Vocab *src_vocab = new Vocab(fns.src_vocab_file);
 	Vocab *tgt_vocab = new Vocab(fns.tgt_vocab_file);
 	RuleTable *ruletable = new RuleTable(para.RULE_NUM_LIMIT,para.LOAD_ALIGNMENT,weight,fns.rule_table_file,src_vocab,tgt_vocab);
-	return 0;
 	LanguageModel *lm_model = new LanguageModel(fns.lm_file,tgt_vocab);
 
 	b = clock();

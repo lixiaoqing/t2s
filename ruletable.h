@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "datastruct.h"
+#include "syntaxtree.h"
 #include "vocab.h"
 
 struct TgtRule

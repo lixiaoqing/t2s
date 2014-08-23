@@ -1,3 +1,5 @@
+#ifndef SYNTAXTREE_H
+#define SYNTAXTREE_H
 #include "stdafx.h"
 #include "myutils.h"
 #include "datastruct.h"
@@ -6,7 +8,6 @@
 struct TreeNode
 {
 	string label;                                    // 该节点的句法标签或者词
-	size_t idx;                                      // 该节点在句子中的位置, 只对词汇节点有效
 	TreeNode* father;
 	vector<TreeNode*> children;
 	int span_lbound;                                 // 该节点对应的span的左边界
@@ -16,9 +17,8 @@ struct TreeNode
 	
 	TreeNode ()
 	{
-		idx         = -1;
 		father      = NULL;
-		span_lbound = -1;
+		span_lbound = 9999;
 		span_rbound = -1;
 	}
 	
@@ -27,11 +27,18 @@ struct TreeNode
 class SyntaxTree
 {
 	public:
-		void str_to_tree(string &line_of_tree);
+		SyntaxTree(const string &line_of_tree);
 
 	private:
+		void build_tree_from_str(const string &line_of_tree);
+		void update_span(TreeNode* node);
+		void dump(TreeNode* node);
+
+	public:
 		TreeNode* root;
 		int sen_len;
+		vector<string> words;
 		map<int,vector<TreeNode*> > span_to_node;    // 记录每个跨度对应的所有节点
 };
 
+#endif

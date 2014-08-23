@@ -1,6 +1,13 @@
 #include "syntaxtree.h"
 
-SyntaxTree::str_to_tree(string &line_of_tree)
+SyntaxTree::SyntaxTree(const string &line_of_tree)
+{
+	build_tree_from_str(line_of_tree);
+	update_span(root);
+	dump(root);
+}
+
+void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 {
 	vector<string> toks;
 	Split(toks,line_of_tree);
@@ -16,8 +23,9 @@ SyntaxTree::str_to_tree(string &line_of_tree)
 			string test=toks[i];
 			if(i == 0)
 			{
-				m_root   = new TreeNode;
-				pre_node = m_root;
+				root     = new TreeNode;
+				pre_node = root;
+				cur_node = root;
 			}
 			else
 			{
@@ -40,7 +48,6 @@ SyntaxTree::str_to_tree(string &line_of_tree)
 			cur_node         = new TreeNode;
 			cur_node->father = pre_node;
 			pre_node->children.push_back(cur_node);
-			word_index++;
 		}
 		//处理形如 VP （ VV 需要 ） VP这样的节点 或 需要 这样的节点
 		else
@@ -48,8 +55,33 @@ SyntaxTree::str_to_tree(string &line_of_tree)
 			cur_node->label = toks[i];
 			//如果是“需要”的情形，则记录中文词的序号
 			if(toks[i+1]==")")
-				cur_node->idx = word_index;
+			{
+				cur_node->span_lbound = word_index;
+				cur_node->span_rbound = word_index;
+				word_index++;
+			}
 		}
 	}
 	sen_len = word_index;
+}
+
+void SyntaxTree::update_span(TreeNode* node)
+{
+	for (const auto child : node->children)
+	{
+		if (child->span_lbound == 9999)
+		{
+			update_span(child);
+		}
+		node->span_lbound = min(node->span_lbound,child->span_lbound);
+		node->span_rbound = max(node->span_rbound,child->span_rbound);
+	}
+}
+
+void SyntaxTree::dump(TreeNode* node)
+{
+	cout<<" ( "<<node->label<<' '<<node->span_lbound<<' '<<node->span_rbound;
+	for (const auto &child : node->children)
+		dump(child);
+	cout<<" ) ";
 }

@@ -9,21 +9,9 @@ SentenceTranslator::SentenceTranslator(const Models &i_models, const Parameter &
 	para = i_para;
 	feature_weight = i_weight;
 
-	stringstream ss(input_sen);
-	string word;
-	while(ss>>word)
-	{
-		src_wids.push_back(src_vocab->get_id(word));
-	}
-
-	src_sen_len = src_wids.size();
-	candbeam_matrix.resize(src_sen_len);
-	for (size_t beg=0;beg<src_sen_len;beg++)
-	{
-		candbeam_matrix.at(beg).resize(src_sen_len-beg);
-	}
-
-	//fill_matrix_with_matched_rules();
+	src_tree = new SyntaxTree(input_sen);
+	src_sen_len = src_tree->sen_len;
+	cin.get();
 }
 
 SentenceTranslator::~SentenceTranslator()
@@ -155,7 +143,7 @@ void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 		string applied_rule;
 		for (size_t i=cand->beg; i<=cand->end; i++)
 		{
-			applied_rule += src_vocab->get_word(src_wids.at(i))+" ";
+			applied_rule += src_tree->words.at(i)+" ";
 		}
 		applied_rule += "||| ";
 		for (auto tgt_wid : cand->tgt_wids)

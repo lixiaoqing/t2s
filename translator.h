@@ -2,6 +2,7 @@
 #include "datastruct.h"
 #include "vocab.h"
 #include "ruletable.h"
+#include "syntaxtree.h"
 #include "lm.h"
 #include "myutils.h"
 
@@ -39,6 +40,6 @@ class SentenceTranslator
 
 		vector<vector<CandBeam> > candbeam_matrix;		//存储解码过程中所有跨度对应的候选列表, 
 													    //candbeam_matrix[i][j]存储起始位置为i, 跨度为j的候选列表
-		vector<int> src_wids;
+		SyntaxTree* src_tree;
 		size_t src_sen_len;
 };

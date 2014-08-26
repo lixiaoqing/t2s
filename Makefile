@@ -4,7 +4,7 @@ objs=lm/*.o util/*.o util/double-conversion/*.o
 
 all: translator
 translator: main.o translator.o lm.o ruletable.o vocab.o datastruct.o myutils.o syntaxtree.o $(objs)
-	$(CXX) -o mebtg main.o translator.o lm.o ruletable.o vocab.o myutils.o datastruct.o syntaxtree.o $(objs) $(CXXFLAGS)
+	$(CXX) -o t2s main.o translator.o lm.o ruletable.o vocab.o myutils.o datastruct.o syntaxtree.o $(objs) $(CXXFLAGS)
 
 main.o: translator.h stdafx.h datastruct.h vocab.h ruletable.h lm.h myutils.h syntaxtree.h
 translator.o: translator.h stdafx.h datastruct.h vocab.h ruletable.h lm.h myutils.h syntaxtree.h

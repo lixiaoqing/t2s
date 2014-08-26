@@ -12,8 +12,8 @@ void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 	vector<string> toks;
 	Split(toks,line_of_tree);
 
-	TreeNode* cur_node;
-	TreeNode* pre_node;
+	SyntaxNode* cur_node;
+	SyntaxNode* pre_node;
 	int word_index = 0;
 	for(size_t i=0;i<toks.size();i++)
 	{
@@ -23,13 +23,13 @@ void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 			string test=toks[i];
 			if(i == 0)
 			{
-				root     = new TreeNode;
+				root     = new SyntaxNode;
 				pre_node = root;
 				cur_node = root;
 			}
 			else
 			{
-				cur_node = new TreeNode;
+				cur_node = new SyntaxNode;
 				cur_node->father = pre_node;
 				pre_node->children.push_back(cur_node);
 				pre_node = cur_node;
@@ -45,7 +45,7 @@ void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 		else if((i-1>=0 && toks[i-1]=="(") && (i+2<toks.size() && toks[i+2]==")"))
 		{
 			cur_node->label  = toks[i];
-			cur_node         = new TreeNode;
+			cur_node         = new SyntaxNode;
 			cur_node->father = pre_node;
 			pre_node->children.push_back(cur_node);
 		}
@@ -58,6 +58,7 @@ void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 			{
 				cur_node->span_lbound = word_index;
 				cur_node->span_rbound = word_index;
+				words.push_back(toks[i]);
 				word_index++;
 			}
 		}
@@ -65,7 +66,7 @@ void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 	sen_len = word_index;
 }
 
-void SyntaxTree::update_span(TreeNode* node)
+void SyntaxTree::update_span(SyntaxNode* node)
 {
 	for (const auto child : node->children)
 	{
@@ -76,9 +77,10 @@ void SyntaxTree::update_span(TreeNode* node)
 		node->span_lbound = min(node->span_lbound,child->span_lbound);
 		node->span_rbound = max(node->span_rbound,child->span_rbound);
 	}
+	nodes_at_span[node->span_lbound << 16 + node->span_rbound].push_back(node);
 }
 
-void SyntaxTree::dump(TreeNode* node)
+void SyntaxTree::dump(SyntaxNode* node)
 {
 	cout<<" ( "<<node->label<<' '<<node->span_lbound<<' '<<node->span_rbound;
 	for (const auto &child : node->children)

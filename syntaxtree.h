@@ -3,19 +3,20 @@
 #include "stdafx.h"
 #include "myutils.h"
 #include "datastruct.h"
+#include "vocab.h"
 
 // 源端句法树节点
-struct TreeNode
+struct SyntaxNode
 {
 	string label;                                    // 该节点的句法标签或者词
-	TreeNode* father;
-	vector<TreeNode*> children;
+	SyntaxNode* father;
+	vector<SyntaxNode*> children;
 	int span_lbound;                                 // 该节点对应的span的左边界
 	int span_rbound;                                 // 该节点对应的span的右边界
-	CandBeam candbeam;                               // 该节点的翻译候选
+	CandBeam* candbeam;                              // 该节点的翻译候选
 	//vector<MatchedRule> matched_rules;               // 该节点匹配到的规则
 	
-	TreeNode ()
+	SyntaxNode ()
 	{
 		father      = NULL;
 		span_lbound = 9999;
@@ -31,14 +32,14 @@ class SyntaxTree
 
 	private:
 		void build_tree_from_str(const string &line_of_tree);
-		void update_span(TreeNode* node);
-		void dump(TreeNode* node);
+		void update_span(SyntaxNode* node);
+		void dump(SyntaxNode* node);
 
 	public:
-		TreeNode* root;
+		SyntaxNode* root;
 		int sen_len;
 		vector<string> words;
-		map<int,vector<TreeNode*> > span_to_node;    // 记录每个跨度对应的所有节点
+		map<int,vector<SyntaxNode*> > nodes_at_span;    // 记录每个跨度对应的所有节点
 };
 
 #endif

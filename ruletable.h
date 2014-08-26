@@ -23,6 +23,14 @@ struct RuleTrieNode
 	map <int, RuleTrieNode*> id2subtrie_map;               // 当前规则节点到下个规则节点的转换表
 };
 
+// 记录匹配上的规则, 包括规则Trie树的节点, 以及句法树片段的头节点和叶子节点等信息
+struct MatchedRuleStruct
+{
+	RuleTrieNode* rule_node;
+	SyntaxNode* syntax_root;
+	vector<SyntaxNode*> syntax_leaves;
+};
+
 class RuleTable
 {
 	public:
@@ -36,7 +44,7 @@ class RuleTable
 			root=new RuleTrieNode;
 			load_rule_table(rule_table_file);
 		};
-		vector<vector<TgtRule>* > find_matched_rules_for_treenode(const TreeNode* cur_node);
+		vector<MatchedRuleStruct> find_matched_rules_for_syntax_node(const SyntaxNode* cur_node);
 
 	private:
 		void load_rule_table(const string &rule_table_file);

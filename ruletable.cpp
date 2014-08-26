@@ -103,12 +103,12 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 	cout<<"load rule table file "<<rule_table_file<<" over\n";
 }
 
-vector<vector<TgtRule>* > RuleTable::find_matched_rules_for_treenode(const TreeNode* cur_node)
+vector<MatchedRuleStruct> RuleTable::find_matched_rules_for_syntax_node(const SyntaxNode* cur_node)
 {
-	vector<vector<TgtRule>* > matched_rules_for_prefixes;
+	vector<MatchedRuleStruct> matched_rule_vec;
 	RuleTrieNode* current = root;
 	// TODO
-	return matched_rules_for_prefixes;
+	return matched_rule_vec;
 }
 
 void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule &tgt_rule)

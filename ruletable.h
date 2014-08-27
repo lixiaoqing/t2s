@@ -6,7 +6,7 @@ struct TgtRule
 {
 	bool operator<(const TgtRule &rhs) const{return score<rhs.score;};
 	int word_num;                               // 规则目标端的单词数
-	vector<int> treenode_ids;                   // 规则目标端的单词或非终结符的id序列
+	vector<int> syntaxnode_ids;                 // 规则目标端的单词或非终结符的id序列
 	vector<int> aligned_src_positions;          // 规则目标端的单词或非终结符在规则源端句法树片段叶节点序列中的位置, 单词对应-1
 	vector<int> group_id;                       // 规则目标端的非终结符及其对齐所构成的规则分组标识符
 	vector<vector<int> > s2t_pos_map;           // 记录规则源端每个单词对应到目标端哪些单词
@@ -20,7 +20,7 @@ struct RuleTrieNode
 {
 	vector<TgtRule> tgt_rules;                             // 一个规则源端对应的所有目标端
 	map <vector<int>, vector<TgtRule> > tgt_rule_group;    // 根据规则目标端的句法标签对规则进行分组, 对s2t/t2t系统有用
-	map <int, RuleTrieNode*> id2subtrie_map;               // 当前规则节点到下个规则节点的转换表
+	map <string, RuleTrieNode*> id2subtrie_map;            // 当前规则节点到下个规则节点的转换表
 };
 
 // 记录匹配上的规则, 包括规则Trie树的节点, 以及句法树片段的头节点和叶子节点等信息
@@ -34,16 +34,7 @@ struct MatchedRuleStruct
 class RuleTable
 {
 	public:
-		RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab)
-		{
-			src_vocab = i_src_vocab;
-			tgt_vocab = i_tgt_vocab;
-			RULE_NUM_LIMIT=size_limit;
-			LOAD_ALIGNMENT = load_alignment;
-			weight=i_weight;
-			root=new RuleTrieNode;
-			load_rule_table(rule_table_file);
-		};
+		RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab);
 		vector<MatchedRuleStruct> find_matched_rules_for_syntax_node(const SyntaxNode* cur_node);
 
 	private:

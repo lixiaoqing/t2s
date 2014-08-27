@@ -1,5 +1,16 @@
 #include "ruletable.h"
 
+RuleTable::RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab)
+{
+	src_vocab = i_src_vocab;
+	tgt_vocab = i_tgt_vocab;
+	RULE_NUM_LIMIT=size_limit;
+	LOAD_ALIGNMENT = load_alignment;
+	weight=i_weight;
+	root=new RuleTrieNode;
+	load_rule_table(rule_table_file);
+}
+
 void RuleTable::load_rule_table(const string &rule_table_file)
 {
 	ifstream fin(rule_table_file.c_str(),ios::binary);
@@ -24,8 +35,8 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		short int tgt_rule_len;
 		fin.read((char*)&tgt_rule_len,sizeof(short int));
 		TgtRule tgt_rule;
-		tgt_rule.treenode_ids.resize(tgt_rule_len);
-		fin.read((char*)&(tgt_rule.treenode_ids[0]),sizeof(int)*tgt_rule_len);
+		tgt_rule.syntaxnode_ids.resize(tgt_rule_len);
+		fin.read((char*)&(tgt_rule.syntaxnode_ids[0]),sizeof(int)*tgt_rule_len);
 		tgt_rule.aligned_src_positions.resize(tgt_rule_len);
 		fin.read((char*)&(tgt_rule.aligned_src_positions[0]),sizeof(int)*tgt_rule_len);
 		
@@ -53,7 +64,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 			}
 			cout<<"@@@"<<endl;
 			cout<<tgt_vocab->get_word(tgt_treefrag_root)<<endl;
-			for (auto id : tgt_rule.treenode_ids)
+			for (auto id : tgt_rule.syntaxnode_ids)
 			{
 				cout<<tgt_vocab->get_word(id)<<' ';
 			}
@@ -116,7 +127,8 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 	RuleTrieNode* current = root;
 	for (const auto &node_id : rulenode_ids)
 	{        
-		auto it = current->id2subtrie_map.find(node_id);
+		string node_str = src_vocab->get_word(node_id);
+		auto it = current->id2subtrie_map.find(node_str);
 		if ( it != current->id2subtrie_map.end() )
 		{
 			current = it->second;
@@ -124,7 +136,7 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 		else
 		{
 			RuleTrieNode* tmp = new RuleTrieNode();
-			current->id2subtrie_map.insert(make_pair(node_id,tmp));
+			current->id2subtrie_map.insert(make_pair(node_str,tmp));
 			current = tmp;
 		}
 	}

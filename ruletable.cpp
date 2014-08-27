@@ -186,7 +186,7 @@ void RuleTable::push_matched_rules_at_next_level(vector<MatchedRuleStruct> &matc
 		vector<string> nodes_vec = Split(it->first,"|||");                     // 记录当前规则源端每个叶节点扩展出来的节点
 		if (nodes_vec.size() != cur_rule.syntax_leaves.size()) continue;       // TODO: if不可能为true
 		vector<SyntaxNode*> new_leaves;
-		bool is_match = true;
+		MatchedRuleStruct new_rule;
 		for(size_t i=0; i<cur_rule.syntax_leaves.size(); i++)
 		{
 			if(nodes_vec[i] == "~")                                            // 该节点不进行扩展, 直接将原规则的叶节点作为新规则的叶节点
@@ -196,27 +196,18 @@ void RuleTable::push_matched_rules_at_next_level(vector<MatchedRuleStruct> &matc
 			}
 			vector<string> nodes = Split(nodes_vec[i]);                        // 记录规则源端一个叶节点扩展出来的节点
 			if( nodes.size() != cur_rule.syntax_leaves[i]->children.size() )   // 规则源端叶节点与对应的句法树叶节点扩展出来的节点数不同
-			{
-				is_match = false;
-			}
+				goto unmatch;
 			for(int j=0; j<nodes.size(); j++)                                  // 对规则源端叶节点与对应的句法树叶节点扩展出来的节点进行匹配
 			{
 				if (nodes[j] != cur_rule.syntax_leaves[i]->children[j]->label)
-				{
-					is_match = false;
-					break;
-				}
+					goto unmatch;
 			}
-			if(is_match == true)
-				new_leaves.insert(new_leaves.end(), cur_rule.syntax_leaves[i]->children.begin(), cur_rule.syntax_leaves[i]->children.end());
-			else
-				break;
+			new_leaves.insert(new_leaves.end(), cur_rule.syntax_leaves[i]->children.begin(), cur_rule.syntax_leaves[i]->children.end());
 		}
-		if(is_match == true)
-		{
-			MatchedRuleStruct new_rule = {it->second,cur_rule.syntax_root,new_leaves};
-			matched_rule_vec.push_back(new_rule);
-		}
+		new_rule = {it->second,cur_rule.syntax_root,new_leaves};
+		matched_rule_vec.push_back(new_rule);
+unmatch:
+		continue;
 	}
 }
 

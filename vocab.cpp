@@ -12,9 +12,8 @@ void Vocab::load_vocab(const string &vocab_file)
 	while(getline(fin,line))
 	{
 		TrimLine(line);
-		vector<string> vs;
 		string sep(" ||| ");
-		Split(vs,line,sep);
+		vector<string> vs = Split(line,sep);
 		word_list.push_back(vs[0]);
 		word2id.insert(make_pair(vs[0],stoi(vs[1])));
 	}

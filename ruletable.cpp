@@ -114,14 +114,6 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 	cout<<"load rule table file "<<rule_table_file<<" over\n";
 }
 
-vector<MatchedRuleStruct> RuleTable::find_matched_rules_for_syntax_node(const SyntaxNode* cur_node)
-{
-	vector<MatchedRuleStruct> matched_rule_vec;
-	RuleTrieNode* current = root;
-	// TODO
-	return matched_rule_vec;
-}
-
 void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule &tgt_rule)
 {
 	RuleTrieNode* current = root;
@@ -153,3 +145,78 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 		}
 	}
 }
+
+/**************************************************************************************
+ 1. 函数功能: 获取当前句法节点匹配到的所有规则
+ 2. 入口参数: 当前句法节点的指针
+ 3. 出口参数: 所有匹配上的规则
+ 4. 算法简介: 按层遍历规则Trie树, 对于每一层中的每一条匹配上的规则, 考察它的下一层规则
+************************************************************************************* */
+vector<MatchedRuleStruct> RuleTable::find_matched_rules_for_syntax_node(SyntaxNode* cur_node)
+{
+	vector<MatchedRuleStruct> matched_rule_vec;
+	auto it = root->id2subtrie_map.find(cur_node->label);
+	if ( it == root->id2subtrie_map.end() )
+		return matched_rule_vec;
+	MatchedRuleStruct root_rule = {it->second,cur_node,{cur_node}};
+	matched_rule_vec.push_back(root_rule);
+	size_t last_beg = 0, last_end = matched_rule_vec.size();           // 记录规则Trie树当前层匹配上的规则在matched_rule_vec中的起始和终止位置
+	while(last_beg != last_end)
+	{
+		for (size_t cur_pos=last_beg; cur_pos!=last_end; cur_pos++)    // 对当前层匹配上的规则进行扩展
+		{
+			push_matched_rules_at_next_level(matched_rule_vec,matched_rule_vec.at(cur_pos));
+		}
+		last_beg = last_end;
+		last_end = matched_rule_vec.size();
+	}
+	return matched_rule_vec;
+}
+
+/**************************************************************************************
+ 1. 函数功能: 考察当前匹配上的规则的下一层规则, 将能匹配上的加入matched_rule_vec
+ 2. 入口参数: 当前匹配上的规则的引用
+ 3. 出口参数: 记录所有匹配规则的matched_rule_vec
+ 4. 算法简介: 遍历下一层规则, 将每条规则的源端与句法树节点进行对比, 看能否匹配上
+************************************************************************************* */
+void RuleTable::push_matched_rules_at_next_level(vector<MatchedRuleStruct> &matched_rule_vec, MatchedRuleStruct &cur_rule)
+{
+	for (auto it=cur_rule.rule_node->id2subtrie_map.begin(); it!=cur_rule.rule_node->id2subtrie_map.end(); it++)
+	{
+		vector<string> nodes_vec = Split(it->first,"|||");                     // 记录当前规则源端每个叶节点扩展出来的节点
+		if (nodes_vec.size() != cur_rule.syntax_leaves.size()) continue;       // TODO: if不可能为true
+		vector<SyntaxNode*> new_leaves;
+		bool is_match = true;
+		for(size_t i=0; i<cur_rule.syntax_leaves.size(); i++)
+		{
+			if(nodes_vec[i] == "~")                                            // 该节点不进行扩展, 直接将原规则的叶节点作为新规则的叶节点
+			{
+				new_leaves.push_back(cur_rule.syntax_leaves[i]);
+				continue;
+			}
+			vector<string> nodes = Split(nodes_vec[i]);                        // 记录规则源端一个叶节点扩展出来的节点
+			if( nodes.size() != cur_rule.syntax_leaves[i]->children.size() )   // 规则源端叶节点与对应的句法树叶节点扩展出来的节点数不同
+			{
+				is_match = false;
+			}
+			for(int j=0; j<nodes.size(); j++)                                  // 对规则源端叶节点与对应的句法树叶节点扩展出来的节点进行匹配
+			{
+				if (nodes[j] != cur_rule.syntax_leaves[i]->children[j]->label)
+				{
+					is_match = false;
+					break;
+				}
+			}
+			if(is_match == true)
+				new_leaves.insert(new_leaves.end(), cur_rule.syntax_leaves[i]->children.begin(), cur_rule.syntax_leaves[i]->children.end());
+			else
+				break;
+		}
+		if(is_match == true)
+		{
+			MatchedRuleStruct new_rule = {it->second,cur_rule.syntax_root,new_leaves};
+			matched_rule_vec.push_back(new_rule);
+		}
+	}
+}
+

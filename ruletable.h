@@ -35,11 +35,12 @@ class RuleTable
 {
 	public:
 		RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab);
-		vector<MatchedRuleStruct> find_matched_rules_for_syntax_node(const SyntaxNode* cur_node);
+		vector<MatchedRuleStruct> find_matched_rules_for_syntax_node(SyntaxNode* cur_node);
 
 	private:
 		void load_rule_table(const string &rule_table_file);
 		void add_rule_to_trie(const vector<int> &node_ids, const TgtRule &tgt_rule);
+		void push_matched_rules_at_next_level(vector<MatchedRuleStruct> &matched_rule_vec, MatchedRuleStruct &cur_rule);
 
 	private:
 		int RULE_NUM_LIMIT;                      // 每个规则源端最多加载的目标端个数 

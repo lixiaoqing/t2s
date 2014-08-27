@@ -1,17 +1,18 @@
 #include "myutils.h"
 
-void Split(vector <string> &vs, const string &s)
+vector<string> Split(const string &s)
 {
-	vs.clear();
-	stringstream ss;
+	vector <string> vs;
+	stringstream ss(s);
 	string e;
-	ss << s;
 	while(ss >> e)
 		vs.push_back(e);
+	return vs;
 }
 
-void Split(vector <string> &vs, const string &s, const string &sep)
+vector<string> Split(const string &s, const string &sep)
 {
+	vector <string> vs;
 	int cur = 0,next;
 	next = s.find(sep);
 	while(next != string::npos)
@@ -22,6 +23,7 @@ void Split(vector <string> &vs, const string &s, const string &sep)
 		next = s.find(sep,cur);
 	}
 	vs.push_back(s.substr(cur));
+	return vs;
 }
 
 void TrimLine(string &line)

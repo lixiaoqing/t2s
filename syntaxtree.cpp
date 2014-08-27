@@ -9,9 +9,7 @@ SyntaxTree::SyntaxTree(const string &line_of_tree)
 
 void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 {
-	vector<string> toks;
-	Split(toks,line_of_tree);
-
+	vector<string> toks = Split(line_of_tree);
 	SyntaxNode* cur_node;
 	SyntaxNode* pre_node;
 	int word_index = 0;

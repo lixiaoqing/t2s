@@ -6,8 +6,8 @@ struct TgtRule
 {
 	bool operator<(const TgtRule &rhs) const{return score<rhs.score;};
 	int word_num;                               // 规则目标端的单词数
-	int tgt_root;                               // 规则目标端的根节点标签
-	vector<int> syntaxnode_ids;                 // 规则目标端的单词或非终结符的id序列
+	int tgt_root;                               // 规则目标端根节点的标签
+	vector<int> tgt_leaves;                     // 规则目标端叶节点的单词或非终结符的id序列
 	vector<int> aligned_src_positions;          // 规则目标端的单词或非终结符在规则源端句法树片段叶节点序列中的位置, 单词对应-1
 	vector<int> group_id;                       // 规则目标端的非终结符及其对齐所构成的规则分组标识符
 	vector<vector<int> > s2t_pos_map;           // 记录规则源端每个单词对应到目标端哪些单词
@@ -17,11 +17,15 @@ struct TgtRule
 	short int is_lexical_rule;                  // 记录该规则是完全词汇化规则还是非词汇化规则
 };
 
-struct RuleTrieNode 
+class RuleTrieNode 
 {
-	vector<TgtRule> tgt_rules;                             // 一个规则源端对应的所有目标端
-	map <vector<int>, vector<TgtRule> > tgt_rule_group;    // 根据规则目标端的句法标签对规则进行分组, 对s2t/t2t系统有用
-	map <string, RuleTrieNode*> id2subtrie_map;            // 当前规则节点到下个规则节点的转换表
+	public:
+		void group_and_sort_tgt_rules();
+	public:
+		bool proc_flag;                                        // 该Trie节点的规则是否已被处理(分组和排序)过
+		vector<TgtRule> tgt_rules;                             // 一个规则源端对应的所有目标端
+		map <vector<int>, vector<TgtRule> > tgt_rule_group;    // 根据规则目标端的句法标签对规则进行分组, 对s2t/t2t系统有用
+		map <string, RuleTrieNode*> id2subtrie_map;            // 当前规则节点到下个规则节点的转换表
 };
 
 // 记录匹配上的规则, 包括规则Trie树的节点, 以及句法树片段的头节点和叶子节点等信息

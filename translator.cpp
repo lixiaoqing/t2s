@@ -71,7 +71,7 @@ string SentenceTranslator::translate_sentence()
 		{
 			int end = beg + span;
 			auto it = src_tree->nodes_at_span.find(beg<<16 + end);
-			if (it == src_tree->nodes_at_span.end())
+			if ( it == src_tree->nodes_at_span.end() )
 				continue;
 			else
 			{
@@ -126,7 +126,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		bool flag = node->cand_organizer.add(best_cand);
 		
 		vector<int> key; //TODO
-		if (duplicate_set.find(key) == duplicate_set.end())
+		if ( duplicate_set.find(key) == duplicate_set.end() )
 		{
 			add_neighbours_to_pq(best_cand,candpq);
 			duplicate_set.insert(key);
@@ -140,7 +140,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			added_cand_num++;
 		}
 	}
-	while(!candpq.empty())
+	while ( !candpq.empty() )
 	{
 		delete candpq.top();
 		candpq.pop();
@@ -152,7 +152,7 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 	bool is_lexical_rule = true;
 	for (auto const &syntax_leaf : matched_rule.syntax_leaves)  //遍历句法树片段叶节点
 	{
-		if (!syntax_leaf->children.empty())
+		if ( !syntax_leaf->children.empty() )
 		{
 			is_lexical_rule = false;
 			break;
@@ -174,12 +174,20 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 	else // 规则源端叶节点含有非终结符
 	{
 		vector<map<int, vector<Cand*> >* > cand_group_vec;
-		vector<vector<Cand>* > glue_cands_vec;
+		vector<vector<Cand*>* > glue_cands_vec;
 		for (const auto &syntax_leaf : matched_rule.syntax_leaves)
 		{
-			if (syntax_leaf->children.size() == 0)    // 终结符节点
+			if (syntax_leaf->children.size() == 0)    // 若为词汇节点, 则跳过, 因为只有非词汇节点的翻译候选才被用来生成当前根节点的候选
 				continue;
-			cand_group_vec.push_back(&(syntax_leaf->cand_organizer.tgt_root_to_cand_group));
+			cand_group_vec.push_back( &(syntax_leaf->cand_organizer.tgt_root_to_cand_group) );
+			if (syntax_leaf->cand_organizer.glue_cands.size() == 0)
+			{
+				glue_cands_vec.push_back(NULL);
+			}
+			else
+			{
+				glue_cands_vec.push_back( &(syntax_leaf->cand_organizer.glue_cands) );
+			}
 		}
 	}
 }

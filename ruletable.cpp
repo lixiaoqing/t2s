@@ -1,5 +1,39 @@
 #include "ruletable.h"
 
+void RuleTrieNode::group_and_sort_tgt_rules()
+{
+	for (auto &tgt_rule : tgt_rules)
+	{
+		if ( tgt_rule.group_id.empty() )    //TODO, 肯定为空吧
+		{
+			for (size_t i=0; i<tgt_rule.aligned_src_positions.size(); i++)
+			{
+				if (tgt_rule.aligned_src_positions[i] == -1)
+					continue;
+				tgt_rule.group_id.push_back(tgt_rule.tgt_leaves[i]);
+				tgt_rule.group_id.push_back(tgt_rule.aligned_src_positions[i]);
+			}
+		}
+
+		auto it = tgt_rule_group.find(tgt_rule.group_id);
+		if ( it == tgt_rule_group.end() )
+		{
+			vector<TgtRule> tgt_rules = {tgt_rule};
+			tgt_rule_group.insert( make_pair(tgt_rule.group_id,tgt_rules) );
+		}
+		else
+		{
+			it->second.push_back(tgt_rule);
+		}
+	}
+
+	for (auto &kvp : tgt_rule_group)
+	{
+		sort(kvp.second.begin(),kvp.second.end());
+	}
+	proc_flag = true;
+}
+
 RuleTable::RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab)
 {
 	src_vocab = i_src_vocab;
@@ -34,8 +68,8 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		// 读取规则目标端的叶节点序列以及非终结符的对齐
 		short int tgt_rule_len;
 		fin.read((char*)&tgt_rule_len,sizeof(short int));
-		tgt_rule.syntaxnode_ids.resize(tgt_rule_len);
-		fin.read((char*)&(tgt_rule.syntaxnode_ids[0]),sizeof(int)*tgt_rule_len);
+		tgt_rule.tgt_leaves.resize(tgt_rule_len);
+		fin.read((char*)&(tgt_rule.tgt_leaves[0]),sizeof(int)*tgt_rule_len);
 		tgt_rule.aligned_src_positions.resize(tgt_rule_len);
 		fin.read((char*)&(tgt_rule.aligned_src_positions[0]),sizeof(int)*tgt_rule_len);
 		
@@ -63,7 +97,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 			}
 			cout<<"@@@"<<endl;
 			cout<<tgt_vocab->get_word(tgt_rule.tgt_root)<<endl;
-			for (auto id : tgt_rule.syntaxnode_ids)
+			for (auto id : tgt_rule.tgt_leaves)
 			{
 				cout<<tgt_vocab->get_word(id)<<' ';
 			}

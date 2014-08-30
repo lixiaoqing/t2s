@@ -36,30 +36,15 @@ string SentenceTranslator::words_to_str(vector<int> wids, bool drop_unk)
 vector<TuneInfo> SentenceTranslator::get_tune_info(size_t sen_id)
 {
 	vector<TuneInfo> nbest_tune_info;
-	CandBeam* candbeam = src_tree->root->candbeam;
-	for (size_t i=0;i< (candbeam->size()<para.NBEST_NUM?candbeam->size():para.NBEST_NUM);i++)
-	{
-		TuneInfo tune_info;
-		tune_info.sen_id = sen_id;
-		tune_info.translation = words_to_str(candbeam->at(i)->tgt_wids,false);
-		for (size_t j=0;j<PROB_NUM;j++)
-		{
-			tune_info.feature_values.push_back(candbeam->at(i)->trans_probs.at(j));
-		}
-		tune_info.feature_values.push_back(candbeam->at(i)->lm_prob);
-		tune_info.feature_values.push_back(candbeam->at(i)->tgt_word_num);
-		tune_info.feature_values.push_back(candbeam->at(i)->phrase_num);
-		tune_info.total_score = candbeam->at(i)->score;
-		nbest_tune_info.push_back(tune_info);
-	}
+	//TODO
 	return nbest_tune_info;
 }
 
 vector<string> SentenceTranslator::get_applied_rules(size_t sen_id)
 {
 	vector<string> applied_rules;
-	Cand *best_cand =  src_tree->root->candbeam->top();
-	dump_rules(applied_rules,best_cand);
+	//TODO
+	//dump_rules(applied_rules,best_cand);
 	return applied_rules;
 }
 
@@ -72,34 +57,7 @@ vector<string> SentenceTranslator::get_applied_rules(size_t sen_id)
 ************************************************************************************* */
 void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 {
-	if (cand->child_lhs == NULL)			//左子候选为空时右子候选也为空
-	{
-		string applied_rule;
-		for (size_t i=cand->beg; i<=cand->end; i++)
-		{
-			applied_rule += src_tree->words.at(i)+" ";
-		}
-		applied_rule += "||| ";
-		for (auto tgt_wid : cand->tgt_wids)
-		{
-			applied_rule += tgt_vocab->get_word(tgt_wid)+" ";
-		}
-		TrimLine(applied_rule);
-		applied_rules.push_back(applied_rule);
-	}
-	else
-	{
-		if (cand->child_lhs->beg < cand->child_rhs->beg)		//子候选为顺序合并
-		{
-			dump_rules(applied_rules,cand->child_lhs);
-			dump_rules(applied_rules,cand->child_rhs);
-		}
-		else
-		{
-			dump_rules(applied_rules,cand->child_rhs);
-			dump_rules(applied_rules,cand->child_lhs);
-		}
-	}
+	//TODO
 }
 
 string SentenceTranslator::translate_sentence()
@@ -124,7 +82,8 @@ string SentenceTranslator::translate_sentence()
 			}
 		}
 	}
-	return words_to_str(src_tree->root->candbeam->top()->tgt_wids,true);
+	//TODO
+	//return words_to_str(src_tree->root->candbeam->top()->tgt_wids,true);
 }
 
 /**************************************************************************************
@@ -135,34 +94,41 @@ string SentenceTranslator::translate_sentence()
 ************************************************************************************* */
 void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
-	Candpq candpq_merge;			//优先级队列,用来临时存储通过合并得到的候选
+	Candpq candpq;			//优先级队列, 用来缓存当前句法节点的翻译候选
 
 	vector<MatchedRuleStruct> matched_rule_vec = ruletable->find_matched_rules_for_syntax_node(node);
-	//对于匹配上的每条规则, 取出每个非终结符对应的最好候选, 将合并得到的候选加入candpq_merge
-	//TODO
+	//对于匹配上的每条规则, 取出每个非终结符对应的最好候选, 将生成的候选加入candpq
+	for (auto &matched_rule : matched_rule_vec)
+	{
+		// 有规则可用, 并且规则源端的头节点与叶子节点不重合(非一元规则)
+		if (matched_rule.rule_node->tgt_rules.size() != 0 && matched_rule.syntax_leaves.at(0) != matched_rule.syntax_root)
+		{
+			add_best_cand_to_pq_for_each_rule(candpq,matched_rule);
+		}
+	}
 
-	set<vector<int> > duplicate_set;	//用来记录candpq_merge中的候选是否已经被扩展过
+	set<vector<int> > duplicate_set;	//用来记录candpq中的候选是否已经被扩展过
 	duplicate_set.clear();
-	//立方体剪枝,每次从candpq_merge中取出最好的候选加入当前节点的candbeam中,并将该候选的邻居加入candpq_merge中
-	int added_cand_num = 0;				//从candpq_merge中添加进当前候选列表中的候选数
+	//立方体剪枝,每次从candpq中取出最好的候选加入当前节点的candbeam中,并将该候选的邻居加入candpq中
+	int added_cand_num = 0;				//从candpq中添加进当前候选列表中的候选数
 	while(added_cand_num < para.BEAM_SIZE)
 	{
-		if (candpq_merge.empty()==true)
+		if (candpq.empty()==true)
 			break;
-		Cand* best_cand = candpq_merge.top();
-		candpq_merge.pop();
+		Cand* best_cand = candpq.top();
+		candpq.pop();
 		if (node->span_lbound == 0 && node->span_rbound == src_sen_len -1)
 		{
 			double increased_lm_prob = lm_model->cal_final_increased_lm_score(best_cand);
 			best_cand->lm_prob += increased_lm_prob;
 			best_cand->score += feature_weight.lm*increased_lm_prob;
 		}
-		bool flag = node->candbeam->add(best_cand);
+		bool flag = node->candbeam_normal.add(best_cand);
 		
 		vector<int> key; //TODO
 		if (duplicate_set.find(key) == duplicate_set.end())
 		{
-			add_neighbours_to_pq(best_cand,candpq_merge);
+			add_neighbours_to_pq(best_cand,candpq);
 			duplicate_set.insert(key);
 		}
 		if (flag == false)					//如果被丢弃或者替换掉了原来的候选
@@ -174,52 +140,62 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			added_cand_num++;
 		}
 	}
-	while(!candpq_merge.empty())
+	while(!candpq.empty())
 	{
-		delete candpq_merge.top();
-		candpq_merge.pop();
+		delete candpq.top();
+		candpq.pop();
+	}
+}
+
+void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, MatchedRuleStruct &matched_rule)
+{
+	bool is_lexical_rule = true;
+	for (auto const &syntax_leaf : matched_rule.syntax_leaves)  //遍历句法树片段叶节点
+	{
+		if (!syntax_leaf->children.empty())
+		{
+			is_lexical_rule = false;
+			break;
+		}
+	}
+
+	if (is_lexical_rule == true)    // 词汇化规则, 即规则源端叶节点全是终结符
+	{
+		for (const auto tgt_rule : matched_rule.rule_node->tgt_rules)
+		{
+			Cand* cand = new Cand;
+			cand->type = 2;
+			cand->tgt_root = tgt_rule.tgt_root;
+			cand->lm_prob = lm_model->cal_increased_lm_score(cand);
+			cand->score = tgt_rule.score + feature_weight.lm*cand->lm_prob + feature_weight.len*cand->tgt_word_num + feature_weight.compose*tgt_rule.is_composed_rule + feature_weight.derive_len*1;
+			candpq.push(cand);
+		}
+	}
+	else // 规则源端叶节点含有非终结符
+	{
+		//TODO
 	}
 }
 
 /**************************************************************************************
- 1. 函数功能: 合并两个子候选并将生成的候选加入candpq_merge中
+ 1. 函数功能: 合并两个子候选并将生成的候选加入candpq中
  2. 入口参数: 两个子候选,两个子候选的排名
- 3. 出口参数: 更新后的candpq_merge
+ 3. 出口参数: 更新后的candpq
  4. 算法简介: 顺序以及逆序合并两个子候选
 ************************************************************************************* */
-void SentenceTranslator::merge_subcands_and_add_to_pq(Cand* cand_lhs, Cand* cand_rhs,int rank_lhs,int rank_rhs,Candpq &candpq_merge)
+void SentenceTranslator::merge_subcands_and_add_to_pq(Cand* cand_lhs, Cand* cand_rhs,int rank_lhs,int rank_rhs,Candpq &candpq)
 {
 	
-	Cand* cand_mono = new Cand;
-	cand_mono->beg = cand_lhs->beg;
-	cand_mono->end = cand_rhs->end;
-	cand_mono->mid = cand_rhs->beg;
-	cand_mono->tgt_word_num = cand_lhs->tgt_word_num + cand_rhs->tgt_word_num;
-	cand_mono->phrase_num = cand_lhs->phrase_num + cand_rhs->phrase_num;
-	cand_mono->rank_lhs = rank_lhs;
-	cand_mono->rank_rhs = rank_rhs;
-	cand_mono->child_lhs = cand_lhs;
-	cand_mono->child_rhs = cand_rhs;
-	cand_mono->tgt_wids = cand_lhs->tgt_wids;
-	cand_mono->tgt_wids.insert(cand_mono->tgt_wids.end(),cand_rhs->tgt_wids.begin(),cand_rhs->tgt_wids.end());
-	for (size_t i=0;i<PROB_NUM;i++)
-	{
-		cand_mono->trans_probs.push_back(cand_lhs->trans_probs.at(i)+cand_rhs->trans_probs.at(i));
-	}
-	double increased_lm_prob = lm_model->cal_increased_lm_score(cand_mono);
-	cand_mono->lm_prob = cand_lhs->lm_prob + cand_rhs->lm_prob + increased_lm_prob;
-	cand_mono->score = cand_lhs->score + cand_rhs->score + feature_weight.lm*increased_lm_prob;
-	candpq_merge.push(cand_mono);
-
+	//TODO
 }
 
 /**************************************************************************************
- 1. 函数功能: 将当前候选的邻居加入candpq_merge中
+ 1. 函数功能: 将当前候选的邻居加入candpq中
  2. 入口参数: 当前候选
- 3. 出口参数: 更新后的candpq_merge
+ 3. 出口参数: 更新后的candpq
  4. 算法简介: //TODO
 ************************************************************************************* */
-void SentenceTranslator::add_neighbours_to_pq(Cand* cur_cand, Candpq &candpq_merge)
+void SentenceTranslator::add_neighbours_to_pq(Cand* cur_cand, Candpq &candpq)
 {
 	//TODO
 }

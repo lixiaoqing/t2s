@@ -115,6 +115,14 @@ void read_config(Filenames &fns,Parameter &para, Weight &weight, const string &c
 				{
 					ss>>weight.phrase_num;
 				}
+				else if(feature == "compose")
+				{
+					ss>>weight.compose;
+				}
+				else if(feature == "derive-len")
+				{
+					ss>>weight.derive_len;
+				}
 			}
 		}
 	}

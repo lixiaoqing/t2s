@@ -12,6 +12,7 @@ struct Cand
 	int phrase_num;				//当前候选包含的短语数
 
 	//目标端信息
+	int tgt_root;               //当前候选目标端的根节点
 	int tgt_word_num;			//当前候选目标端的单词数
 	vector<int> tgt_wids;		//当前候选目标端的id序列
 
@@ -20,12 +21,8 @@ struct Cand
 	vector<double> trans_probs;	//翻译概率
 	double lm_prob;
 
-	//合并信息,记录当前候选是由两个子候选合并得来时的相关信息
-	int mid;					//记录两个子候选在源语言中的交界位置
-	int rank_lhs;				//记录第一个子候选在优先级队列中的排名
-	int rank_rhs;				//记录第二个子候选在优先级队列中的排名
-	Cand* child_lhs;			//指向第一个子候选的指针
-	Cand* child_rhs;			//指向第一个子候选的指针
+	//生成信息, 记录候选是如何生成的
+	int type;                   //候选的类型(0:由OOV生成; 1:由glue规则; 2:由普通规则生成; 3:由一元规则生成)
 
 	//语言模型状态信息
 	lm::ngram::ChartState lm_state;
@@ -36,6 +33,7 @@ struct Cand
 		end = 0;
 		phrase_num = 1;
 
+		tgt_root = -1;
 		tgt_word_num = 1;
 		tgt_wids.clear();
 
@@ -43,12 +41,7 @@ struct Cand
 		trans_probs.clear();
 		lm_prob = 0.0;
 
-		mid = -1;
-		rank_lhs = 0;
-		rank_rhs = 0;
-
-		child_lhs = NULL;
-		child_rhs = NULL;
+		type = 0;
 	}
 };
 
@@ -117,6 +110,8 @@ struct Weight
 	double lm;
 	double len;							//译文的单词数
 	double phrase_num;					//源端被切成的短语数
+	double compose;
+	double derive_len;
 };
 
 #endif

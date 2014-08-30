@@ -27,14 +27,13 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		rulenode_ids.resize(src_rule_len);
 		fin.read((char*)&rulenode_ids[0],sizeof(int)*src_rule_len);
 
+		TgtRule tgt_rule;
 		//树到树的规则使用, 临时用一下
-		int tgt_treefrag_root;
-		fin.read((char*)&tgt_treefrag_root,sizeof(int));
+		fin.read((char*)&tgt_rule.tgt_root,sizeof(int));
 
 		// 读取规则目标端的叶节点序列以及非终结符的对齐
 		short int tgt_rule_len;
 		fin.read((char*)&tgt_rule_len,sizeof(short int));
-		TgtRule tgt_rule;
 		tgt_rule.syntaxnode_ids.resize(tgt_rule_len);
 		fin.read((char*)&(tgt_rule.syntaxnode_ids[0]),sizeof(int)*tgt_rule_len);
 		tgt_rule.aligned_src_positions.resize(tgt_rule_len);
@@ -63,7 +62,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 				cout<<src_vocab->get_word(id)<<endl;
 			}
 			cout<<"@@@"<<endl;
-			cout<<tgt_vocab->get_word(tgt_treefrag_root)<<endl;
+			cout<<tgt_vocab->get_word(tgt_rule.tgt_root)<<endl;
 			for (auto id : tgt_rule.syntaxnode_ids)
 			{
 				cout<<tgt_vocab->get_word(id)<<' ';
@@ -206,8 +205,7 @@ void RuleTable::push_matched_rules_at_next_level(vector<MatchedRuleStruct> &matc
 		}
 		new_rule = {it->second,cur_rule.syntax_root,new_leaves};
 		matched_rule_vec.push_back(new_rule);
-unmatch:
-		continue;
+unmatch:;
 	}
 }
 

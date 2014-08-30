@@ -24,6 +24,7 @@ class SentenceTranslator
 		vector<string> get_applied_rules(size_t sen_id);
 	private:
 		void generate_kbest_for_node(SyntaxNode* node);
+		void add_best_cand_to_pq_for_each_rule(Candpq &candpq, MatchedRuleStruct &matched_rule);
 		void merge_subcands_and_add_to_pq(Cand *cand_lhs, Cand *cand_rhs,int rank_lhs,int rank_rhs,Candpq &new_cands_by_mergence);
 		void add_neighbours_to_pq(Cand *cur_cand, Candpq &new_cands_by_mergence);
 		void dump_rules(vector<string> &applied_rules, Cand *cand);

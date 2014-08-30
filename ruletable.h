@@ -6,6 +6,7 @@ struct TgtRule
 {
 	bool operator<(const TgtRule &rhs) const{return score<rhs.score;};
 	int word_num;                               // 规则目标端的单词数
+	int tgt_root;                               // 规则目标端的根节点标签
 	vector<int> syntaxnode_ids;                 // 规则目标端的单词或非终结符的id序列
 	vector<int> aligned_src_positions;          // 规则目标端的单词或非终结符在规则源端句法树片段叶节点序列中的位置, 单词对应-1
 	vector<int> group_id;                       // 规则目标端的非终结符及其对齐所构成的规则分组标识符

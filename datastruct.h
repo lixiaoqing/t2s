@@ -55,20 +55,24 @@ struct smaller
 
 bool larger( const Cand *pl, const Cand *pr );
 
-//将跨度相同的候选组织到列表中
-class CandBeam
+//组织每个句法节点翻译候选的类
+class CandOrganizer
 {
 	public:
 		bool add(Cand *cand_ptr);
-		Cand* top() { return data.front(); }
-		Cand* at(size_t i) { return data.at(i);}
-		int size() { return data.size();  }
-		void sort() { std::sort(data.begin(),data.end(),larger); }
+		Cand* top() { return normal_cands.front(); }
+		Cand* at(size_t i) { return normal_cands.at(i);}
+		int size() { return normal_cands.size();  }
+		void sort() { std::sort(normal_cands.begin(),normal_cands.end(),larger); }
 	private:
 		bool is_bound_same(const Cand *a, const Cand *b);
 
-	private:
-		vector<Cand*> data;
+	public:
+		vector<Cand*> normal_cands;                      // 当前节点的普通翻译候选
+		vector<Cand*> glue_cands;                        // 当前节点的glue翻译候选
+		map<int,vector<Cand*> > tgt_root_to_cand_group;  // 将当前节点的翻译候选按照目标端的根节点进行分组
+		map<string,int> recombine_info_to_cand_idx;      // 根据重组信息(由边界词与目标端根节点组成)找候选在candbeam_normal中的序号
+	                                                     // 以查找新候选是否跟已有候选重复, 如有重复则进行假设重组
 };
 
 typedef priority_queue<Cand*, vector<Cand*>, smaller> Candpq;

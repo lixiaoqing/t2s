@@ -123,7 +123,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			best_cand->lm_prob += increased_lm_prob;
 			best_cand->score += feature_weight.lm*increased_lm_prob;
 		}
-		bool flag = node->candbeam_normal.add(best_cand);
+		bool flag = node->cand_organizer.add(best_cand);
 		
 		vector<int> key; //TODO
 		if (duplicate_set.find(key) == duplicate_set.end())
@@ -173,7 +173,14 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 	}
 	else // 规则源端叶节点含有非终结符
 	{
-		//TODO
+		vector<map<int, vector<Cand*> >* > cand_group_vec;
+		vector<vector<Cand>* > glue_cands_vec;
+		for (const auto &syntax_leaf : matched_rule.syntax_leaves)
+		{
+			if (syntax_leaf->children.size() == 0)    // 终结符节点
+				continue;
+			cand_group_vec.push_back(&(syntax_leaf->cand_organizer.tgt_root_to_cand_group));
+		}
 	}
 }
 

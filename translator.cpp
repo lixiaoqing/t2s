@@ -96,17 +96,18 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
 	Candpq candpq;			//优先级队列, 用来缓存当前句法节点的翻译候选
 
-	vector<MatchedRuleStruct> matched_rule_vec = ruletable->find_matched_rules_for_syntax_node(node);
+	vector<RuleMatchInfo> rule_match_info_vec = ruletable->find_matched_rules_for_syntax_node(node);
 	//对于匹配上的每条规则, 取出每个非终结符对应的最好候选, 将生成的候选加入candpq
-	for (auto &matched_rule : matched_rule_vec)
+	for (auto &rule_match_info : rule_match_info_vec)
 	{
 		// 有规则可用, 并且规则源端的头节点与叶子节点不重合(非一元规则)
-		if (matched_rule.rule_node->tgt_rules.size() != 0 && matched_rule.syntax_leaves.at(0) != matched_rule.syntax_root)
+		if (rule_match_info.rule_node->tgt_rules.size() != 0 && rule_match_info.syntax_leaves.at(0) != rule_match_info.syntax_root)
 		{
-			add_best_cand_to_pq_for_each_rule(candpq,matched_rule);
+			add_best_cand_to_pq_for_each_rule(candpq,rule_match_info);
 		}
 	}
 
+	//TODO
 	set<vector<int> > duplicate_set;	//用来记录candpq中的候选是否已经被扩展过
 	duplicate_set.clear();
 	//立方体剪枝,每次从candpq中取出最好的候选加入当前节点的candbeam中,并将该候选的邻居加入candpq中
@@ -147,10 +148,16 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 	}
 }
 
-void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, MatchedRuleStruct &matched_rule)
+/**************************************************************************************
+ 1. 函数功能: 对每个规则匹配信息, 生成候选并加入candpq中
+ 2. 入口参数: 规则匹配信息, 包括规则Trie节点, 目标端根节点, 目标端叶节点
+ 3. 出口参数: 缓存当前节点翻译候选的candpq
+ 4. 算法简介: 见注释
+************************************************************************************* */
+void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, RuleMatchInfo &rule_match_info)
 {
 	bool is_lexical_rule = true;
-	for (auto const &syntax_leaf : matched_rule.syntax_leaves)  //遍历句法树片段叶节点
+	for (auto const &syntax_leaf : rule_match_info.syntax_leaves)  //遍历句法树片段叶节点
 	{
 		if ( !syntax_leaf->children.empty() )
 		{
@@ -161,7 +168,7 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 
 	if (is_lexical_rule == true)    // 词汇化规则, 即规则源端叶节点全是终结符
 	{
-		for (const auto tgt_rule : matched_rule.rule_node->tgt_rules)
+		for (const auto tgt_rule : rule_match_info.rule_node->tgt_rules)
 		{
 			Cand* cand = new Cand;
 			cand->type = 2;
@@ -173,11 +180,11 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 	}
 	else // 规则源端叶节点含有非终结符
 	{
-		vector<map<int, vector<Cand*> >* > cand_group_vec;
-		vector<vector<Cand*>* > glue_cands_vec;
-		for (const auto &syntax_leaf : matched_rule.syntax_leaves)
+		vector<map<int, vector<Cand*> >* > cand_group_vec;   // 存储所有非终结符叶节点的候选分组表
+		vector<vector<Cand*>* > glue_cands_vec;              // 存储所有非终结符叶节点的glue候选
+		for (const auto &syntax_leaf : rule_match_info.syntax_leaves)
 		{
-			if (syntax_leaf->children.size() == 0)    // 若为词汇节点, 则跳过, 因为只有非词汇叶节点的翻译候选才被用来生成当前根节点的候选
+			if (syntax_leaf->children.size() == 0)           // 若为词汇节点, 则跳过, 只有非词汇叶节点的翻译候选才被用来生成当前根节点的候选
 				continue;
 			cand_group_vec.push_back( &(syntax_leaf->cand_organizer.tgt_root_to_cand_group) );
 			if (syntax_leaf->cand_organizer.glue_cands.size() == 0)
@@ -189,51 +196,45 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 				glue_cands_vec.push_back( &(syntax_leaf->cand_organizer.glue_cands) );
 			}
 		}
-		
-		if (matched_rule.rule_node->proc_flag == false)
+
+		if (rule_match_info.rule_node->proc_flag == false)
 		{
-			matched_rule.rule_node->group_and_sort_tgt_rules();
+			rule_match_info.rule_node->group_and_sort_tgt_rules();                     // 根据规则目标端的非终结符及其对齐关系, 对它们进行分组
 		}
 
-		for (auto &kvp : matched_rule.rule_node->tgt_rule_group)
+		for (auto &kvp : rule_match_info.rule_node->tgt_rule_group)                    // 遍历每一组规则
 		{
-			TgtRule &best_tgt_rule = kvp.second[0];
-
-			bool match_flag = true;
-			bool glue_flag = false;
-			vector<vector<Cand*>* > cands_of_leaves;
-			for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)
+			TgtRule &best_tgt_rule = kvp.second[0];                                    // 取出每组规则中最好的
+			vector<vector<Cand*>* > cands_of_leaves;                                   // 存储规则源端非终结符叶节点的翻译候选
+			vector<int> rank_vec;
+			Cand* cand = NULL;
+			for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)          // 遍历规则目标端的每一个非终结符叶节点
 			{
-				int src_idx = best_tgt_rule.aligned_src_positions[i];
+				int src_idx = best_tgt_rule.aligned_src_positions[i];                  // 该非终结符在规则源端对应的位置
 				if (src_idx == -1)
 					continue;
-				auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);
+				auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);  // 查找是否有能够匹配该非终结符的翻译候选
 				if ( it == cand_group_vec[src_idx]->end() )
 				{
-					match_flag = false;
-					if (glue_cands_vec.size() != 0)
+					if (glue_cands_vec.size() != 0)                                    // 没有的话就使用glue规则
 					{
-						match_flag = true;
-						glue_flag = true;
 						cands_of_leaves.push_back(glue_cands_vec[src_idx]);
-						continue;
 					}
-					break;
+					else
+						goto unmatch;
 				}
 				else
 				{
-					match_flag = true;
 					cands_of_leaves.push_back( &(it->second) );
 				}
 			}
+			if (best_tgt_rule.tgt_leaves.size() == 0) continue;  //TODO, 不可能为0吧
 			
-			if (match_flag==false || best_tgt_rule.tgt_leaves.size() == 0)
-				continue;
-			
-			vector<int> rank_vec(cands_of_leaves.size(),0);
-			Cand *cand = generate_cand_from_rule(kvp.second,0,cands_of_leaves,rank_vec);
+			rank_vec.resize(cands_of_leaves.size(),0);
+			cand = generate_cand_from_rule(kvp.second,0,cands_of_leaves,rank_vec);    // 根据规则和叶节点候选生成当前节点的候选
 			cand->type = 2;
 			candpq.push(cand);
+unmatch:;
 		}
 	}
 }
@@ -241,6 +242,7 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 Cand* SentenceTranslator::generate_cand_from_rule(vector<TgtRule> tgt_rules,int rule_rank,vector<vector<Cand*>* > cands_of_leaves, vector<int> cand_rank_vec)
 {
 	Cand *cand = new Cand;
+	//TODO
 	return cand;
 }
 

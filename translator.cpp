@@ -177,7 +177,7 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 		vector<vector<Cand*>* > glue_cands_vec;
 		for (const auto &syntax_leaf : matched_rule.syntax_leaves)
 		{
-			if (syntax_leaf->children.size() == 0)    // 若为词汇节点, 则跳过, 因为只有非词汇节点的翻译候选才被用来生成当前根节点的候选
+			if (syntax_leaf->children.size() == 0)    // 若为词汇节点, 则跳过, 因为只有非词汇叶节点的翻译候选才被用来生成当前根节点的候选
 				continue;
 			cand_group_vec.push_back( &(syntax_leaf->cand_organizer.tgt_root_to_cand_group) );
 			if (syntax_leaf->cand_organizer.glue_cands.size() == 0)
@@ -189,7 +189,59 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, Match
 				glue_cands_vec.push_back( &(syntax_leaf->cand_organizer.glue_cands) );
 			}
 		}
+		
+		if (matched_rule.rule_node->proc_flag == false)
+		{
+			matched_rule.rule_node->group_and_sort_tgt_rules();
+		}
+
+		for (auto &kvp : matched_rule.rule_node->tgt_rule_group)
+		{
+			TgtRule &best_tgt_rule = kvp.second[0];
+
+			bool match_flag = true;
+			bool glue_flag = false;
+			vector<vector<Cand*>* > cands_of_leaves;
+			for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)
+			{
+				int src_idx = best_tgt_rule.aligned_src_positions[i];
+				if (src_idx == -1)
+					continue;
+				auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);
+				if ( it == cand_group_vec[src_idx]->end() )
+				{
+					match_flag = false;
+					if (glue_cands_vec.size() != 0)
+					{
+						match_flag = true;
+						glue_flag = true;
+						cands_of_leaves.push_back(glue_cands_vec[src_idx]);
+						continue;
+					}
+					break;
+				}
+				else
+				{
+					match_flag = true;
+					cands_of_leaves.push_back( &(it->second) );
+				}
+			}
+			
+			if (match_flag==false || best_tgt_rule.tgt_leaves.size() == 0)
+				continue;
+			
+			vector<int> rank_vec(cands_of_leaves.size(),0);
+			Cand *cand = generate_cand_from_rule(kvp.second,0,cands_of_leaves,rank_vec);
+			cand->type = 2;
+			candpq.push(cand);
+		}
 	}
+}
+
+Cand* SentenceTranslator::generate_cand_from_rule(vector<TgtRule> tgt_rules,int rule_rank,vector<vector<Cand*>* > cands_of_leaves, vector<int> cand_rank_vec)
+{
+	Cand *cand = new Cand;
+	return cand;
 }
 
 /**************************************************************************************

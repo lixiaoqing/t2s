@@ -1,6 +1,7 @@
 #ifndef DATASTRUCT_H
 #define DATASTRUCT_H
 #include "stdafx.h"
+#include "ruletable.h"
 #include "lm/left.hh"
 
 //存储翻译候选
@@ -21,8 +22,13 @@ struct Cand
 	vector<double> trans_probs;	//翻译概率
 	double lm_prob;
 
-	//生成信息, 记录候选是如何生成的
-	int type;                   //候选的类型(0:由OOV生成; 1:由glue规则; 2:由普通规则生成; 3:由一元规则生成)
+	//来源信息, 记录候选是如何生成的
+	int type;                                      // 候选的类型(0:由OOV生成; 1:由glue规则; 2:由普通规则生成; 3:由一元规则生成)
+	vector<TgtRule>* matched_tgt_rules;            // 目标端非终结符相同的一组规则
+	int rule_rank;                                 // 当前候选所用的规则在matched_tgt_rules中的排名
+	vector<vector<Cand*>* > cands_of_nt_leaves;    // 规则源端非终结符叶节点的翻译候选
+	vector<int> cand_rank_vec;                     // 记录当前候选所用的每个非终结符叶节点的翻译候选的排名
+	vector<int> tgt_root_of_leaf_cands;            // 记录源端非终结符叶节点的翻译候选的目标端根节点
 
 	//语言模型状态信息
 	lm::ngram::ChartState lm_state;

@@ -1,3 +1,5 @@
+#ifndef RULETABLE_H
+#define RULETABLE_H
 #include "stdafx.h"
 #include "syntaxtree.h"
 #include "vocab.h"
@@ -55,3 +57,5 @@ class RuleTable
 		Vocab *src_vocab;
 		Vocab *tgt_vocab;
 };
+
+#endif

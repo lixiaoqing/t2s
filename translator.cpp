@@ -205,7 +205,7 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, RuleM
 		for (auto &kvp : rule_match_info.rule_node->tgt_rule_group)                    // 遍历每一组规则
 		{
 			TgtRule &best_tgt_rule = kvp.second[0];                                    // 取出每组规则中最好的
-			vector<vector<Cand*>* > cands_of_leaves;                                   // 存储规则源端非终结符叶节点的翻译候选
+			vector<vector<Cand*>* > cands_of_nt_leaves;                                // 存储规则源端非终结符叶节点的翻译候选
 			vector<int> rank_vec;
 			Cand* cand = NULL;
 			for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)          // 遍历规则目标端的每一个非终结符叶节点
@@ -218,20 +218,20 @@ void SentenceTranslator::add_best_cand_to_pq_for_each_rule(Candpq &candpq, RuleM
 				{
 					if (glue_cands_vec.size() != 0)                                    // 没有的话就使用glue规则
 					{
-						cands_of_leaves.push_back(glue_cands_vec[src_idx]);
+						cands_of_nt_leaves.push_back(glue_cands_vec[src_idx]);
 					}
 					else
 						goto unmatch;
 				}
 				else
 				{
-					cands_of_leaves.push_back( &(it->second) );
+					cands_of_nt_leaves.push_back( &(it->second) );
 				}
 			}
 			if (best_tgt_rule.tgt_leaves.size() == 0) continue;  //TODO, 不可能为0吧
 			
-			rank_vec.resize(cands_of_leaves.size(),0);
-			cand = generate_cand_from_rule(kvp.second,0,cands_of_leaves,rank_vec);    // 根据规则和叶节点候选生成当前节点的候选
+			rank_vec.resize(cands_of_nt_leaves.size(),0);
+			cand = generate_cand_from_rule(kvp.second,0,cands_of_nt_leaves,rank_vec);    // 根据规则和叶节点候选生成当前节点的候选
 			cand->type = 2;
 			candpq.push(cand);
 unmatch:;
@@ -239,9 +239,25 @@ unmatch:;
 	}
 }
 
-Cand* SentenceTranslator::generate_cand_from_rule(vector<TgtRule> tgt_rules,int rule_rank,vector<vector<Cand*>* > cands_of_leaves, vector<int> cand_rank_vec)
+Cand* SentenceTranslator::generate_cand_from_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*>* > &cands_of_nt_leaves, vector<int> &cand_rank_vec)
 {
 	Cand *cand = new Cand;
+	// 记录当前候选的以下来源信息: 1) 使用的哪条规则; 2) 使用的每个非终结符叶节点中的哪个候选; 3) 使用的每个叶节点候选的目标端根节点id
+	cand->matched_tgt_rules  = &tgt_rules;
+	cand->rule_rank          = rule_rank;
+	cand->cands_of_nt_leaves = cands_of_nt_leaves;
+	cand->cand_rank_vec      = cand_rank_vec;
+	for (size_t i=0; i<cands_of_nt_leaves.size(); i++)
+	{
+		cand->tgt_root_of_leaf_cands.push_back(cands_of_nt_leaves[i]->at(cand_rank_vec[i])->tgt_root)
+	}
+	
+	TgtRule &applied_rule = tgt_rules[rule_rank];
+	cand->tgt_root        = applied_rule.tgt_root;
+	cand->lm_prob         = lm_model->cal_increased_lm_score(cand);
+	cand->derive_len      = 1;
+	cand->score           = applied_rule.score + feature_weight.lm*cand->lm_prob + feature_weight.len*applied_rule.word_num
+                            + feature_weight.compose*applied_rule.is_composed_rule + feature_weight.derive_len*1.0;
 	//TODO
 	return cand;
 }

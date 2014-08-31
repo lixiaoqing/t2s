@@ -1,7 +1,6 @@
 #ifndef RULETABLE_H
 #define RULETABLE_H
 #include "stdafx.h"
-#include "syntaxtree.h"
 #include "vocab.h"
 
 struct TgtRule
@@ -30,24 +29,15 @@ class RuleTrieNode
 		map <string, RuleTrieNode*> id2subtrie_map;            // 当前规则节点到下个规则节点的转换表
 };
 
-// 记录规则匹配信息, 包括规则Trie树的节点, 以及句法树片段的头节点和叶子节点等信息
-struct RuleMatchInfo
-{
-	RuleTrieNode* rule_node;
-	SyntaxNode* syntax_root;
-	vector<SyntaxNode*> syntax_leaves;
-};
-
 class RuleTable
 {
 	public:
 		RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab);
-		vector<RuleMatchInfo> find_matched_rules_for_syntax_node(SyntaxNode* cur_node);
+		RuleTrieNode* get_root() {return root;};
 
 	private:
 		void load_rule_table(const string &rule_table_file);
 		void add_rule_to_trie(const vector<int> &node_ids, const TgtRule &tgt_rule);
-		void push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo &cur_match_info);
 
 	private:
 		int RULE_NUM_LIMIT;                      // 每个规则源端最多加载的目标端个数 

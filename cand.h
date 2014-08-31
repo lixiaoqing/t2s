@@ -1,5 +1,5 @@
-#ifndef DATASTRUCT_H
-#define DATASTRUCT_H
+#ifndef CAND_H
+#define CAND_H
 #include "stdafx.h"
 #include "ruletable.h"
 #include "lm/left.hh"
@@ -16,6 +16,7 @@ struct Cand
 	int tgt_root;               //当前候选目标端的根节点
 	int tgt_word_num;			//当前候选目标端的单词数
 	vector<int> tgt_wids;		//当前候选目标端的id序列
+	float derive_len;
 
 	//打分信息
 	double score;				//当前候选的总得分
@@ -82,46 +83,5 @@ class CandOrganizer
 };
 
 typedef priority_queue<Cand*, vector<Cand*>, smaller> Candpq;
-
-struct TuneInfo
-{
-	size_t sen_id;
-	string translation;
-	vector<double> feature_values;
-	double total_score;
-};
-
-struct Filenames
-{
-	string input_file;
-	string output_file;
-	string nbest_file;
-	string src_vocab_file;
-	string tgt_vocab_file;
-	string rule_table_file;
-	string lm_file;
-};
-
-struct Parameter
-{
-	size_t BEAM_SIZE;					//优先级队列的大小限制
-	size_t SEN_THREAD_NUM;				//句子级并行数
-	size_t SPAN_THREAD_NUM;				//span级并行数
-	size_t NBEST_NUM;
-	size_t RULE_NUM_LIMIT;		      	//源端相同的情况下最多能加载的规则数
-	bool PRINT_NBEST;
-	bool DUMP_RULE;						//是否输出所使用的规则
-	bool LOAD_ALIGNMENT;				//加载短语表时是否加载短语内部的词对齐
-};
-
-struct Weight
-{
-	vector<double> trans;
-	double lm;
-	double len;							//译文的单词数
-	double phrase_num;					//源端被切成的短语数
-	double compose;
-	double derive_len;
-};
 
 #endif

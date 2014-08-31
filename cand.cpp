@@ -1,4 +1,4 @@
-#include "datastruct.h"
+#include "cand.h"
 
 bool larger( const Cand *pl, const Cand *pr )
 {

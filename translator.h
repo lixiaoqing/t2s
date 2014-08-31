@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "datastruct.h"
+#include "cand.h"
 #include "vocab.h"
 #include "ruletable.h"
 #include "syntaxtree.h"
@@ -12,6 +12,14 @@ struct Models
 	Vocab *tgt_vocab;
 	RuleTable *ruletable;
 	LanguageModel *lm_model;
+};
+
+// 记录规则匹配信息, 包括规则Trie树的节点, 以及句法树片段的头节点和叶子节点等信息
+struct RuleMatchInfo
+{
+	RuleTrieNode* rule_node;
+	SyntaxNode* syntax_root;
+	vector<SyntaxNode*> syntax_leaves;
 };
 
 class SentenceTranslator
@@ -30,6 +38,9 @@ class SentenceTranslator
 		Cand* generate_cand_from_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*>* > &cands_of_leaves,vector<int> &cand_rank_vec);
 		void dump_rules(vector<string> &applied_rules, Cand *cand);
 		string words_to_str(vector<int> wids, bool drop_unk);
+
+		vector<RuleMatchInfo> find_matched_rules_for_syntax_node(SyntaxNode* cur_node);
+		void push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo &cur_match_info);
 
 	private:
 		Vocab *src_vocab;

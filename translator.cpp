@@ -96,7 +96,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
 	Candpq candpq;			//优先级队列, 用来缓存当前句法节点的翻译候选
 
-	vector<RuleMatchInfo> rule_match_info_vec = ruletable->find_matched_rules_for_syntax_node(node);
+	vector<RuleMatchInfo> rule_match_info_vec = find_matched_rules_for_syntax_node(node);
 	//对于匹配上的每条规则, 取出每个非终结符对应的最好候选, 将生成的候选加入candpq
 	for (auto &rule_match_info : rule_match_info_vec)
 	{
@@ -249,13 +249,13 @@ Cand* SentenceTranslator::generate_cand_from_rule(vector<TgtRule> &tgt_rules,int
 	cand->cand_rank_vec      = cand_rank_vec;
 	for (size_t i=0; i<cands_of_nt_leaves.size(); i++)
 	{
-		cand->tgt_root_of_leaf_cands.push_back(cands_of_nt_leaves[i]->at(cand_rank_vec[i])->tgt_root)
+		cand->tgt_root_of_leaf_cands.push_back(cands_of_nt_leaves[i]->at(cand_rank_vec[i])->tgt_root);
 	}
 	
 	TgtRule &applied_rule = tgt_rules[rule_rank];
 	cand->tgt_root        = applied_rule.tgt_root;
 	cand->lm_prob         = lm_model->cal_increased_lm_score(cand);
-	cand->derive_len      = 1;
+	cand->derive_len      = 1.0;
 	cand->score           = applied_rule.score + feature_weight.lm*cand->lm_prob + feature_weight.len*applied_rule.word_num
                             + feature_weight.compose*applied_rule.is_composed_rule + feature_weight.derive_len*1.0;
 	//TODO
@@ -284,3 +284,69 @@ void SentenceTranslator::add_neighbours_to_pq(Cand* cur_cand, Candpq &candpq)
 {
 	//TODO
 }
+
+
+/**************************************************************************************
+ 1. 函数功能: 获取当前句法节点匹配到的所有规则
+ 2. 入口参数: 当前句法节点的指针
+ 3. 出口参数: 所有匹配上的规则
+ 4. 算法简介: 按层遍历规则Trie树, 对于每一层中的每一条匹配上的规则, 考察它的下一层规则
+************************************************************************************* */
+vector<RuleMatchInfo> SentenceTranslator::find_matched_rules_for_syntax_node(SyntaxNode* cur_node)
+{
+	vector<RuleMatchInfo> match_info_vec;
+	auto it = ruletable->get_root()->id2subtrie_map.find(cur_node->label);
+	if ( it == ruletable->get_root()->id2subtrie_map.end() )
+		return match_info_vec;
+	RuleMatchInfo root_rule = {it->second,cur_node,{cur_node}};
+	match_info_vec.push_back(root_rule);
+	size_t last_beg = 0, last_end = match_info_vec.size();           // 记录规则Trie树当前层匹配上的规则在match_info_vec中的起始和终止位置
+	while(last_beg != last_end)
+	{
+		for (size_t cur_pos=last_beg; cur_pos!=last_end; cur_pos++)    // 对当前层匹配上的规则进行扩展
+		{
+			push_matched_rules_at_next_level(match_info_vec,match_info_vec.at(cur_pos));
+		}
+		last_beg = last_end;
+		last_end = match_info_vec.size();
+	}
+	return match_info_vec;
+}
+
+/**************************************************************************************
+ 1. 函数功能: 考察当前匹配上的规则的下一层规则, 将能匹配上的加入match_info_vec
+ 2. 入口参数: 当前匹配上的规则的引用
+ 3. 出口参数: 记录所有匹配规则的match_info_vec
+ 4. 算法简介: 遍历下一层规则, 将每条规则的源端与句法树节点进行对比, 看能否匹配上
+************************************************************************************* */
+void SentenceTranslator::push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo &cur_match_info)
+{
+	for (auto &kvp : cur_match_info.rule_node->id2subtrie_map)
+	{
+		vector<string> nodes_vec = Split(kvp.first,"|||");                         // 记录当前规则源端每个叶节点扩展出来的节点
+		if (nodes_vec.size() != cur_match_info.syntax_leaves.size()) continue;     // TODO: if不可能为true
+		vector<SyntaxNode*> new_leaves;
+		RuleMatchInfo new_match_info;
+		for(size_t i=0; i<cur_match_info.syntax_leaves.size(); i++)
+		{
+			if(nodes_vec[i] == "~")                                                // 该节点不进行扩展, 直接将原规则的叶节点作为新规则的叶节点
+			{
+				new_leaves.push_back(cur_match_info.syntax_leaves[i]);
+				continue;
+			}
+			vector<string> nodes = Split(nodes_vec[i]);                            // 记录规则源端一个叶节点扩展出来的节点
+			if( nodes.size() != cur_match_info.syntax_leaves[i]->children.size() ) // 规则源端叶节点与对应的句法树叶节点扩展出来的节点数不同
+				goto unmatch;
+			for(int j=0; j<nodes.size(); j++)                                      // 对规则源端叶节点与对应的句法树叶节点扩展出来的节点进行匹配
+			{
+				if (nodes[j] != cur_match_info.syntax_leaves[i]->children[j]->label)
+					goto unmatch;
+			}
+			new_leaves.insert(new_leaves.end(), cur_match_info.syntax_leaves[i]->children.begin(), cur_match_info.syntax_leaves[i]->children.end());
+		}
+		new_match_info = {kvp.second,cur_match_info.syntax_root,new_leaves};
+		match_info_vec.push_back(new_match_info);
+unmatch:;
+	}
+}
+

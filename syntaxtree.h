@@ -2,7 +2,7 @@
 #define SYNTAXTREE_H
 #include "stdafx.h"
 #include "myutils.h"
-#include "datastruct.h"
+#include "cand.h"
 #include "vocab.h"
 
 // 源端句法树节点

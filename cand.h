@@ -16,7 +16,6 @@ struct Cand
 	int tgt_root;               //当前候选目标端的根节点
 	int tgt_word_num;			//当前候选目标端的单词数
 	vector<int> tgt_wids;		//当前候选目标端的id序列
-	float derive_len;
 
 	//打分信息
 	double score;				//当前候选的总得分
@@ -24,12 +23,13 @@ struct Cand
 	double lm_prob;
 
 	//来源信息, 记录候选是如何生成的
-	int type;                                      // 候选的类型(0:由OOV生成; 1:由glue规则; 2:由普通规则生成; 3:由一元规则生成)
+	int type;                                      // 候选的类型(0:由OOV生成; 1:由glue规则生成; 2:由普通规则生成; 3:由一元规则生成)
 	vector<TgtRule>* matched_tgt_rules;            // 目标端非终结符相同的一组规则
 	int rule_rank;                                 // 当前候选所用的规则在matched_tgt_rules中的排名
-	vector<vector<Cand*>* > cands_of_nt_leaves;    // 规则源端非终结符叶节点的翻译候选
+	vector<vector<Cand*>* > cands_of_nt_leaves;    // 规则源端非终结符叶节点的翻译候选(glue规则所有叶节点均为非终结符)
 	vector<int> cand_rank_vec;                     // 记录当前候选所用的每个非终结符叶节点的翻译候选的排名
 	vector<int> tgt_root_of_leaf_cands;            // 记录源端非终结符叶节点的翻译候选的目标端根节点
+	float derive_len;                              // 使用的一元规则的数量? TODO
 
 	//语言模型状态信息
 	lm::ngram::ChartState lm_state;
@@ -67,15 +67,15 @@ class CandOrganizer
 {
 	public:
 		bool add(Cand *cand_ptr);
-		Cand* top() { return normal_cands.front(); }
-		Cand* at(size_t i) { return normal_cands.at(i);}
-		int size() { return normal_cands.size();  }
-		void sort() { std::sort(normal_cands.begin(),normal_cands.end(),larger); }
+		Cand* top() { return all_cands.front(); }
+		Cand* at(size_t i) { return all_cands.at(i);}
+		int size() { return all_cands.size();  }
+		void sort() { std::sort(all_cands.begin(),all_cands.end(),larger); }
 	private:
 		bool is_bound_same(const Cand *a, const Cand *b);
 
 	public:
-		vector<Cand*> normal_cands;                      // 当前节点的普通翻译候选
+		vector<Cand*> all_cands;                         // 当前节点所有的翻译候选
 		vector<Cand*> glue_cands;                        // 当前节点的glue翻译候选
 		map<int,vector<Cand*> > tgt_root_to_cand_group;  // 将当前节点的翻译候选按照目标端的根节点进行分组
 		map<string,int> recombine_info_to_cand_idx;      // 根据重组信息(由边界词与目标端根节点组成)找候选在candbeam_normal中的序号

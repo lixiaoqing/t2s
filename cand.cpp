@@ -18,7 +18,7 @@ bool larger( const Cand *pl, const Cand *pr )
  * **********************************************************************/
 bool CandOrganizer::add(Cand *cand_ptr)
 { 
-	for (auto &e_cand_ptr : normal_cands)
+	for (auto &e_cand_ptr : all_cands)
 	{
 		if (is_bound_same(cand_ptr,e_cand_ptr))
 		{
@@ -33,7 +33,7 @@ bool CandOrganizer::add(Cand *cand_ptr)
 			}
 		}
 	}
-	normal_cands.push_back(cand_ptr); 
+	all_cands.push_back(cand_ptr); 
 	return true;
 }
 

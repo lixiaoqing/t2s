@@ -66,6 +66,7 @@ struct Weight
 	double phrase_num;					//源端被切成的短语数
 	double compose;
 	double derive_len;
+	double glue;
 };
 
 struct TuneInfo

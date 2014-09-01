@@ -32,10 +32,14 @@ class SentenceTranslator
 		vector<string> get_applied_rules(size_t sen_id);
 	private:
 		void generate_kbest_for_node(SyntaxNode* node);
-		void add_best_cand_to_pq_for_each_rule(Candpq &candpq, RuleMatchInfo &rule_match_info);
-		void merge_subcands_and_add_to_pq(Cand *cand_lhs, Cand *cand_rhs,int rank_lhs,int rank_rhs,Candpq &new_cands_by_mergence);
-		void add_neighbours_to_pq(Cand *cur_cand, Candpq &new_cands_by_mergence);
-		Cand* generate_cand_from_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*>* > &cands_of_leaves,vector<int> &cand_rank_vec);
+		void add_best_cand_to_pq_with_normal_rule(Candpq &candpq, RuleMatchInfo &rule_match_info);
+		Cand* generate_cand_from_normal_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*>* > &cands_of_leaves,vector<int> &cand_rank_vec);
+		void add_cand_to_pq_for_oov(SyntaxNode *node);
+		void add_best_cand_to_pq_with_glue_rule(Candpq &candpq,SyntaxNode* node);
+		Cand* generate_cand_from_glue_rule(vector<vector<Cand*>* > cands_of_leaves,vector<int> cand_rank_vec);
+		void extend_cand_by_cube_pruning(Candpq &candpq,SyntaxNode* node);
+		void add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, set<vector<int> > &duplicate_set);
+		void extend_unary_cand(RuleMatchInfo &rule_match_info);
 		void dump_rules(vector<string> &applied_rules, Cand *cand);
 		string words_to_str(vector<int> wids, bool drop_unk);
 

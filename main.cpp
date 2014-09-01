@@ -123,6 +123,10 @@ void read_config(Filenames &fns,Parameter &para, Weight &weight, const string &c
 				{
 					ss>>weight.derive_len;
 				}
+				else if(feature == "glue")
+				{
+					ss>>weight.glue;
+				}
 			}
 		}
 	}

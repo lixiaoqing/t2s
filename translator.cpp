@@ -123,7 +123,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			extend_cand_with_unary_rule(rule_match_info_vec[0]);
 		}
 	}
-	//TODO
+	sort_and_group_cands(node);
 	while ( !candpq.empty() )
 	{
 		delete candpq.top();
@@ -428,6 +428,29 @@ Cand* SentenceTranslator::generate_cand_from_unary_rule(Cand* cand, TgtRule &tgt
 	new_cand->score = cand->score + tgt_rule.score + feature_weight.lm*new_cand->lm_prob + feature_weight.len*tgt_rule.word_num + feature_weight.compose*tgt_rule.is_composed_rule + feature_weight.derive_len*1.0;
 	new_cand->type = 3;
 	return new_cand;
+}
+
+void SentenceTranslator::sort_and_group_cands(SyntaxNode* node)
+{
+	sort(node->cand_organizer.all_cands.begin(),node->cand_organizer.all_cands.end());
+	for (auto cand : node->cand_organizer.all_cands)
+	{
+		if ( cand->tgt_root == tgt_vocab->get_id("X-X-X") )
+		{
+			node->cand_organizer.glue_cands.push_back(cand);
+			continue;
+		}
+		auto it = node->cand_organizer.tgt_root_to_cand_group.find(cand->tgt_root);
+		if ( it != node->cand_organizer.tgt_root_to_cand_group.end() )
+		{
+			vector<Cand*> cand_vec = {cand};
+			node->cand_organizer.tgt_root_to_cand_group.insert( make_pair(cand->tgt_root,cand_vec) );
+		}
+		else
+		{
+			it->second.push_back(cand);
+		}
+	}
 }
 
 /**************************************************************************************

@@ -217,7 +217,7 @@ unmatch:;
 Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*> > &cands_of_nt_leaves, vector<int> &cand_rank_vec)
 {
 	Cand *cand = new Cand;
-	cand->type = 2;
+	cand->type = 1;
 	// 记录当前候选的以下来源信息: 1) 使用的哪条规则; 2) 使用的每个非终结符叶节点中的哪个候选; 3) 使用的每个叶节点候选的目标端根节点id
 	cand->matched_tgt_rules  = &tgt_rules;
 	cand->rule_rank          = rule_rank;
@@ -267,7 +267,7 @@ void SentenceTranslator::add_best_cand_to_pq_with_glue_rule(Candpq &candpq,Synta
 Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &cands_of_leaves, vector<int> &cand_rank_vec)
 {
 	Cand *glue_cand = new Cand;
-	glue_cand->type = 1;
+	glue_cand->type = 2;
 	glue_cand->cands_of_nt_leaves = cands_of_leaves;
 	glue_cand->cand_rank_vec      = cand_rank_vec;
 	for (size_t i=0; i<cands_of_leaves.size(); i++)
@@ -322,7 +322,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 			vector<int> new_cand_rank_vec = cur_cand->cand_rank_vec;
 			new_cand_rank_vec[i]++;
 			vector<int> new_key = base_key;
-			if (cur_cand->type == 2)
+			if (cur_cand->type == 1)
 			{
 				new_key.push_back(cur_cand->rule_rank);
 			}
@@ -330,13 +330,13 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 			if (duplicate_set.count(new_key) != 0)
 			{
 				Cand *new_cand;
-				if (cur_cand->type == 1)         // glue规则生成的候选
-				{
-					new_cand = generate_cand_from_glue_rule(cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
-				}
-				else if (cur_cand->type == 2)    // 普通规则生成的候选
+				if (cur_cand->type == 1)    // 普通规则生成的候选
 				{
 					new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank,cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
+				}
+				else if (cur_cand->type == 2)         // glue规则生成的候选
+				{
+					new_cand = generate_cand_from_glue_rule(cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
 				}
 				candpq.push(new_cand);
 				duplicate_set.insert(new_key);
@@ -344,7 +344,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 		}
 	}
     // 对普通规则生成的候选, 考虑规则的下一位
-	if (cur_cand->type == 2 && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size())
+	if (cur_cand->type == 1 && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size())
 	{
 		vector<int> new_key = base_key;
 		new_key.push_back(cur_cand->rule_rank+1);

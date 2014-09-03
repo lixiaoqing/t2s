@@ -109,7 +109,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 	// 处理OOV
 	if (candpq.size()==0 &&node->span_lbound==node->span_rbound && node->children.size()==1 && node->children.at(0)->children.size()==0)
 	{
-		add_cand_to_pq_for_oov(node);
+		add_cand_for_oov(node);
 	}
 	else
 	{
@@ -139,86 +139,60 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 ***************************************************************************************/
 void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, RuleMatchInfo &rule_match_info)
 {
-	bool is_lexical_rule = true;
-	for (const auto &syntax_leaf : rule_match_info.syntax_leaves)                            //遍历句法树片段叶节点
+	vector<map<int, vector<Cand*> >* > cand_group_vec;                                   // 存储所有非终结符叶节点的候选分组表
+	vector<vector<Cand*>* > glue_cands_vec;                                              // 存储所有非终结符叶节点的glue候选
+	for (const auto &syntax_leaf : rule_match_info.syntax_leaves)
 	{
-		if ( !syntax_leaf->children.empty() )
+		if (syntax_leaf->children.size() == 0)                                           // 若为词汇节点, 则跳过
+			continue;
+		cand_group_vec.push_back( &(syntax_leaf->cand_organizer.tgt_root_to_cand_group) );
+		if (syntax_leaf->cand_organizer.glue_cands.size() == 0)
 		{
-			is_lexical_rule = false;
-			break;
+			glue_cands_vec.push_back(NULL);
+		}
+		else
+		{
+			glue_cands_vec.push_back( &(syntax_leaf->cand_organizer.glue_cands) );
 		}
 	}
 
-	if (is_lexical_rule == true)                                                             // 词汇化规则, 即规则源端叶节点全是终结符
+	if (rule_match_info.rule_node->proc_flag == false)
 	{
-		for (const auto &tgt_rule : rule_match_info.rule_node->tgt_rules)
-		{
-			Cand* cand = new Cand;
-			cand->type = 2;
-			cand->tgt_root = tgt_rule.tgt_root;
-			cand->lm_prob = lm_model->cal_increased_lm_score(cand);
-			cand->score = tgt_rule.score + feature_weight.lm*cand->lm_prob + feature_weight.len*cand->tgt_word_num 
-				          + feature_weight.compose*tgt_rule.is_composed_rule + feature_weight.derive_len*1;
-			candpq.push(cand);
-		}
+		rule_match_info.rule_node->group_and_sort_tgt_rules();                           // 根据规则目标端的非终结符及其对齐关系进行分组
 	}
-	else                                                                                     // 规则源端叶节点含有非终结符
+
+	for (auto &kvp : rule_match_info.rule_node->tgt_rule_group)                          // 遍历每一组规则
 	{
-		vector<map<int, vector<Cand*> >* > cand_group_vec;                                   // 存储所有非终结符叶节点的候选分组表
-		vector<vector<Cand*>* > glue_cands_vec;                                              // 存储所有非终结符叶节点的glue候选
-		for (const auto &syntax_leaf : rule_match_info.syntax_leaves)
+		TgtRule &best_tgt_rule = kvp.second[0];                                          // 取出每组规则中最好的
+		vector<vector<Cand*>* > cands_of_nt_leaves;                                      // 存储规则源端非终结符叶节点的翻译候选
+		vector<int> rank_vec;
+		Cand *cand = NULL;
+		for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)                // 遍历规则目标端的每一个非终结符叶节点
 		{
-			if (syntax_leaf->children.size() == 0)                                           // 若为词汇节点, 则跳过
+			int src_idx = best_tgt_rule.aligned_src_positions[i];                        // 该非终结符在规则源端对应的位置
+			if (src_idx == -1)
 				continue;
-			cand_group_vec.push_back( &(syntax_leaf->cand_organizer.tgt_root_to_cand_group) );
-			if (syntax_leaf->cand_organizer.glue_cands.size() == 0)
+			auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);        // 查找是否有能够匹配该非终结符的翻译候选
+			if ( it == cand_group_vec[src_idx]->end() )
 			{
-				glue_cands_vec.push_back(NULL);
+				if (glue_cands_vec.size() != 0)                                          // 没有的话就使用glue规则 TODO 不应该用吧
+				{
+					cands_of_nt_leaves.push_back(glue_cands_vec[src_idx]);
+				}
+				else
+					goto unmatch;
 			}
 			else
 			{
-				glue_cands_vec.push_back( &(syntax_leaf->cand_organizer.glue_cands) );
+				cands_of_nt_leaves.push_back( &(it->second) );
 			}
 		}
+		if (best_tgt_rule.tgt_leaves.size() == 0) continue;                              // TODO, 不可能为0吧
 
-		if (rule_match_info.rule_node->proc_flag == false)
-		{
-			rule_match_info.rule_node->group_and_sort_tgt_rules();                           // 根据规则目标端的非终结符及其对齐关系进行分组
-		}
-
-		for (auto &kvp : rule_match_info.rule_node->tgt_rule_group)                          // 遍历每一组规则
-		{
-			TgtRule &best_tgt_rule = kvp.second[0];                                          // 取出每组规则中最好的
-			vector<vector<Cand*>* > cands_of_nt_leaves;                                      // 存储规则源端非终结符叶节点的翻译候选
-			vector<int> rank_vec;
-			Cand *cand = NULL;
-			for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)                // 遍历规则目标端的每一个非终结符叶节点
-			{
-				int src_idx = best_tgt_rule.aligned_src_positions[i];                        // 该非终结符在规则源端对应的位置
-				if (src_idx == -1)
-					continue;
-				auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);        // 查找是否有能够匹配该非终结符的翻译候选
-				if ( it == cand_group_vec[src_idx]->end() )
-				{
-					if (glue_cands_vec.size() != 0)                                          // 没有的话就使用glue规则
-					{
-						cands_of_nt_leaves.push_back(glue_cands_vec[src_idx]);
-					}
-					else
-						goto unmatch;
-				}
-				else
-				{
-					cands_of_nt_leaves.push_back( &(it->second) );
-				}
-			}
-			if (best_tgt_rule.tgt_leaves.size() == 0) continue;                              // TODO, 不可能为0吧
-
-			rank_vec.resize(cands_of_nt_leaves.size(),0);
-			cand = generate_cand_from_normal_rule(kvp.second,0,cands_of_nt_leaves,rank_vec); // 根据规则和叶节点候选生成当前节点的候选
-			candpq.push(cand);
+		rank_vec.resize(cands_of_nt_leaves.size(),0);
+		cand = generate_cand_from_normal_rule(kvp.second,0,cands_of_nt_leaves,rank_vec); // 根据规则和叶节点候选生成当前节点的候选
+		candpq.push(cand);
 unmatch:;
-		}
 	}
 }
 
@@ -232,6 +206,7 @@ unmatch:;
 Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*>* > &cands_of_nt_leaves, vector<int> &cand_rank_vec)
 {
 	Cand *cand = new Cand;
+	cand->type = 2;
 	// 记录当前候选的以下来源信息: 1) 使用的哪条规则; 2) 使用的每个非终结符叶节点中的哪个候选; 3) 使用的每个叶节点候选的目标端根节点id
 	cand->matched_tgt_rules  = &tgt_rules;
 	cand->rule_rank          = rule_rank;
@@ -248,12 +223,10 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 	cand->derive_len      = 1.0;
 	cand->score           = applied_rule.score + feature_weight.lm*cand->lm_prob + feature_weight.len*applied_rule.word_num
                             + feature_weight.compose*applied_rule.is_composed_rule + feature_weight.derive_len*1.0;
-	cand->type            = 2;
-	//TODO
 	return cand;
 }
 
-void SentenceTranslator::add_cand_to_pq_for_oov(SyntaxNode *node)
+void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 {
 	Cand *oov_cand = new Cand;
 	for (const auto w : feature_weight.trans)
@@ -283,6 +256,7 @@ void SentenceTranslator::add_best_cand_to_pq_with_glue_rule(Candpq &candpq,Synta
 Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*>* > &cands_of_leaves, vector<int> &cand_rank_vec)
 {
 	Cand *glue_cand = new Cand;
+	glue_cand->type = 1;
 	glue_cand->cands_of_nt_leaves = cands_of_leaves;
 	glue_cand->cand_rank_vec      = cand_rank_vec;
 	for (size_t i=0; i<cands_of_leaves.size(); i++)
@@ -297,7 +271,6 @@ Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*>* > &
 		glue_cand->score += cands_of_leaves[i]->at(cand_rank_vec[i])->score;
 	}
 	glue_cand->score += feature_weight.lm*glue_cand->lm_prob + feature_weight.glue*1.0 + feature_weight.derive_len*1.0;
-	glue_cand->type = 1;
 	//TODO
 	return glue_cand;
 }
@@ -423,10 +396,10 @@ void SentenceTranslator::extend_cand_with_unary_rule(RuleMatchInfo &rule_match_i
 Cand* SentenceTranslator::generate_cand_from_unary_rule(Cand* cand, TgtRule &tgt_rule, vector<int> &words_lhs, vector<int> &words_rhs)
 {
 	Cand *new_cand = new Cand;
+	new_cand->type = 3;
 	new_cand->tgt_root = cand->tgt_root;
 	new_cand->lm_prob = lm_model->cal_increased_lm_score(cand);
 	new_cand->score = cand->score + tgt_rule.score + feature_weight.lm*new_cand->lm_prob + feature_weight.len*tgt_rule.word_num + feature_weight.compose*tgt_rule.is_composed_rule + feature_weight.derive_len*1.0;
-	new_cand->type = 3;
 	return new_cand;
 }
 

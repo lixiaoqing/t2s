@@ -7,11 +7,6 @@
 //存储翻译候选
 struct Cand	                
 {
-	//源端信息
-	int beg;					//当前候选在源语言中的起始位置
-	int end;					//当前候选在源语言中的终止位置
-	int phrase_num;				//当前候选包含的短语数
-
 	//目标端信息
 	int tgt_root;               //当前候选目标端的根节点
 	int tgt_word_num;			//当前候选目标端的单词数
@@ -36,10 +31,6 @@ struct Cand
 
 	Cand ()
 	{
-		beg = 0;
-		end = 0;
-		phrase_num = 1;
-
 		tgt_root = -1;
 		tgt_word_num = 1;
 		tgt_wids.clear();
@@ -78,7 +69,7 @@ class CandOrganizer
 		vector<Cand*> all_cands;                         // 当前节点所有的翻译候选
 		vector<Cand*> glue_cands;                        // 当前节点的glue翻译候选
 		map<int,vector<Cand*> > tgt_root_to_cand_group;  // 将当前节点的翻译候选按照目标端的根节点进行分组
-		map<string,int> recombine_info_to_cand_idx;      // 根据重组信息(由边界词与目标端根节点组成)找候选在candbeam_normal中的序号
+		map<string,int> recombine_info_to_cand_idx;      // 根据重组信息(由边界词与目标端根节点组成)找候选在all_cands中的序号
 	                                                     // 以查找新候选是否跟已有候选重复, 如有重复则进行假设重组
 };
 

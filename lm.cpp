@@ -38,7 +38,37 @@ lm::WordIndex LanguageModel::convert_to_kenlm_id(int wid)
 double LanguageModel::cal_increased_lm_score(Cand* cand) 
 {
 	RuleScore<Model> rule_score(*kenlm,cand->lm_state);
-	//TODO
+	if ( cand->type == 0 || ( cand->type == 2 && cand->cands_of_nt_leaves.empty() ) )  //OOV候选或者由不含非终结符的规则生成的候选
+	{
+		for (const auto wid : cand->tgt_wids)
+		{
+			rule_score.Terminal( convert_to_kenlm_id(wid) );
+		}
+	}
+	else if (cand->type == 2)
+	{
+		TgtRule &applied_rule = cand->matched_tgt_rules->at(cand->rule_rank);
+		size_t nt_idx = 0;
+		for (size_t i=0; i<applied_rule.aligned_src_positions.size(); i++)
+		{
+			if (applied_rule.aligned_src_positions[i] == -1)
+			{
+				rule_score.Terminal( convert_to_kenlm_id(applied_rule.tgt_leaves[i]) );
+			}
+			else
+			{
+				rule_score.NonTerminal(cand->cands_of_nt_leaves[nt_idx]->at(cand->cand_rank_vec[nt_idx])->lm_state);
+				nt_idx++;
+			}
+		}
+	}
+	else if (cand->type == 1)
+	{
+		for (size_t nt_idx=0; nt_idx<cand->cands_of_nt_leaves.size(); nt_idx++)
+		{
+			rule_score.NonTerminal(cand->cands_of_nt_leaves[nt_idx]->at(cand->cand_rank_vec[nt_idx])->lm_state);
+		}
+	}
 	double increased_lm_score = rule_score.Finish();
 	cand->lm_state.ZeroRemaining();
 	return increased_lm_score;

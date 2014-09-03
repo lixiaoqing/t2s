@@ -57,7 +57,7 @@ double LanguageModel::cal_increased_lm_score(Cand* cand)
 			}
 			else
 			{
-				rule_score.NonTerminal(cand->cands_of_nt_leaves[nt_idx]->at(cand->cand_rank_vec[nt_idx])->lm_state);
+				rule_score.NonTerminal(cand->cands_of_nt_leaves[nt_idx][cand->cand_rank_vec[nt_idx]]->lm_state);
 				nt_idx++;
 			}
 		}
@@ -66,7 +66,7 @@ double LanguageModel::cal_increased_lm_score(Cand* cand)
 	{
 		for (size_t nt_idx=0; nt_idx<cand->cands_of_nt_leaves.size(); nt_idx++)
 		{
-			rule_score.NonTerminal(cand->cands_of_nt_leaves[nt_idx]->at(cand->cand_rank_vec[nt_idx])->lm_state);
+			rule_score.NonTerminal(cand->cands_of_nt_leaves[nt_idx][cand->cand_rank_vec[nt_idx]]->lm_state);
 		}
 	}
 	double increased_lm_score = rule_score.Finish();

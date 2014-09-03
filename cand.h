@@ -61,7 +61,7 @@ class CandOrganizer
 		Cand* top() { return all_cands.front(); }
 		Cand* at(size_t i) { return all_cands.at(i);}
 		int size() { return all_cands.size();  }
-		void sort() { std::sort(all_cands.begin(),all_cands.end(),larger); }
+		void sort_and_group_cands();
 	private:
 		bool is_bound_same(const Cand *a, const Cand *b);
 

@@ -40,7 +40,6 @@ class SentenceTranslator
 		void extend_cand_by_cube_pruning(Candpq &candpq,SyntaxNode* node);
 		void add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, set<vector<int> > &duplicate_set);
 		void extend_cand_with_unary_rule(RuleMatchInfo &rule_match_info);
-		void sort_and_group_cands(SyntaxNode* node);
 		void dump_rules(vector<string> &applied_rules, Cand *cand);
 		string words_to_str(vector<int> &wids, bool drop_unk);
 

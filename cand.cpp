@@ -55,3 +55,26 @@ bool CandOrganizer::is_bound_same(const Cand *a, const Cand *b)
 	return true;
 }
 
+void CandOrganizer::sort_and_group_cands()
+{
+	sort(all_cands.begin(),all_cands.end(),larger);
+	for (auto cand : all_cands)
+	{
+		if ( cand->tgt_root == 0 ) //TODO tgt_vocab->get_id("X-X-X") = 0
+		{
+			glue_cands.push_back(cand);
+			continue;
+		}
+		auto it = tgt_root_to_cand_group.find(cand->tgt_root);
+		if ( it != tgt_root_to_cand_group.end() )
+		{
+			vector<Cand*> cand_vec = {cand};
+			tgt_root_to_cand_group.insert( make_pair(cand->tgt_root,cand_vec) );
+		}
+		else
+		{
+			it->second.push_back(cand);
+		}
+	}
+}
+

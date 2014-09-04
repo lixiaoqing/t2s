@@ -60,11 +60,6 @@ void CandOrganizer::sort_and_group_cands()
 	sort(all_cands.begin(),all_cands.end(),larger);
 	for (auto cand : all_cands)
 	{
-		if ( cand->tgt_root == 0 ) //TODO tgt_vocab->get_id("X-X-X") = 0
-		{
-			glue_cands.push_back(cand);
-			continue;
-		}
 		auto it = tgt_root_to_cand_group.find(cand->tgt_root);
 		if ( it != tgt_root_to_cand_group.end() )
 		{

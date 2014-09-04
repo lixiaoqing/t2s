@@ -151,26 +151,18 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 ***************************************************************************************/
 void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, RuleMatchInfo &rule_match_info)
 {
+	if (rule_match_info.rule_node->proc_flag == false)
+	{
+		rule_match_info.rule_node->group_and_sort_tgt_rules();                           // 根据规则目标端的非终结符及其对齐关系进行分组
+	}
+
 	vector<map<int, vector<Cand*> >* > cand_group_vec;                                   // 存储所有非终结符叶节点的候选分组表
-	vector<vector<Cand*> > glue_cands_vec;                                               // 存储所有非终结符叶节点的glue候选
 	for (const auto &syntax_leaf : rule_match_info.syntax_leaves)
 	{
 		if (syntax_leaf->children.size() == 0)                                           // 若为词汇节点, 则跳过
 			continue;
-		cand_group_vec.push_back( &(syntax_leaf->cand_organizer.tgt_root_to_cand_group) );
-		if (syntax_leaf->cand_organizer.glue_cands.size() == 0)
-		{
-			glue_cands_vec.push_back({NULL});
-		}
-		else
-		{
-			glue_cands_vec.push_back( syntax_leaf->cand_organizer.glue_cands );
-		}
-	}
-
-	if (rule_match_info.rule_node->proc_flag == false)
-	{
-		rule_match_info.rule_node->group_and_sort_tgt_rules();                           // 根据规则目标端的非终结符及其对齐关系进行分组
+		map<int,vector<Cand*> > &cand_group = syntax_leaf->cand_organizer.tgt_root_to_cand_group;
+		cand_group_vec.push_back(&cand_group);
 	}
 
 	for (auto &kvp : rule_match_info.rule_node->tgt_rule_group)                          // 遍历规则目标端的分组
@@ -182,22 +174,21 @@ void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, Ru
 		for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)                // 遍历规则目标端的每一个叶节点
 		{
 			int src_idx = best_tgt_rule.aligned_src_positions[i];                        // 该叶节点在规则源端对应的位置
+																						 // TODO src_idx的值使用叶节点序号(此为非终结符序号)更方便
 			if (src_idx == -1)                                                           // 跳过终结符叶节点, 若全是终结符则cands_of_nt_leaves为空
 				continue;
-			auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);        // 查找是否有能够匹配该非终结符的翻译候选
-			if ( it == cand_group_vec[src_idx]->end() )
-			{
-				if (glue_cands_vec.size() != 0)                                          // 没有的话就使用glue规则 TODO 不应该用吧
-				{
-					cands_of_nt_leaves.push_back(glue_cands_vec[src_idx]);
-				}
-				else
-					goto unmatch;
-			}
-			else
+			auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);
+			auto it_glue = cand_group_vec[src_idx]->find( tgt_vocab->get_id("X-X-X") );
+			if ( it != cand_group_vec[src_idx]->end() )                                  // 有能够匹配该非终结符的翻译候选
 			{
 				cands_of_nt_leaves.push_back(it->second);
 			}
+			else if ( it_glue != cand_group_vec[src_idx]->end() )                        // 没有匹配候选就使用glue候选 TODO 不应该用吧
+			{
+				cands_of_nt_leaves.push_back(it_glue->second);
+			}
+			else
+				goto unmatch;
 		}
 		if (best_tgt_rule.tgt_leaves.size() == 0) continue;                              // TODO, 不可能为0吧
 		rank_vec.resize(cands_of_nt_leaves.size(),0);

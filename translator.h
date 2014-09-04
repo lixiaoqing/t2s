@@ -32,9 +32,9 @@ class SentenceTranslator
 		vector<string> get_applied_rules(size_t sen_id);
 	private:
 		void generate_kbest_for_node(SyntaxNode* node);
+		void add_cand_for_oov(SyntaxNode *node);
 		void add_best_cand_to_pq_with_normal_rule(Candpq &candpq, RuleMatchInfo &rule_match_info);
 		Cand* generate_cand_from_normal_rule(vector<TgtRule> &tgt_rules,int rule_rank,vector<vector<Cand*> > &cands_of_leaves,vector<int> &cand_rank_vec);
-		void add_cand_for_oov(SyntaxNode *node);
 		void add_best_cand_to_pq_with_glue_rule(Candpq &candpq,SyntaxNode* node);
 		Cand* generate_cand_from_glue_rule(vector<vector<Cand*> > &cands_of_leaves, vector<int> &cand_rank_vec);
 		void extend_cand_by_cube_pruning(Candpq &candpq,SyntaxNode* node);

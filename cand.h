@@ -9,7 +9,6 @@ struct Cand
 {
 	//目标端信息
 	int tgt_root;               //当前候选目标端的根节点
-	int tgt_word_num;			//当前候选目标端的单词数
 	vector<int> tgt_wids;		//当前候选目标端的id序列
 
 	//打分信息
@@ -24,7 +23,7 @@ struct Cand
 	vector<vector<Cand*> > cands_of_nt_leaves;     // 规则源端非终结符叶节点的翻译候选(glue规则所有叶节点均为非终结符)
 	vector<int> cand_rank_vec;                     // 记录当前候选所用的每个非终结符叶节点的翻译候选的排名
 	vector<int> tgt_root_of_leaf_cands;            // 记录源端非终结符叶节点的翻译候选的目标端根节点
-	float derive_len;                              // 使用的一元规则的数量? TODO
+	int rule_num;                                  // 使用的规则的数量
 
 	//语言模型状态信息
 	lm::ngram::ChartState lm_state;
@@ -32,7 +31,6 @@ struct Cand
 	Cand ()
 	{
 		tgt_root = -1;
-		tgt_word_num = 1;
 		tgt_wids.clear();
 
 		score = 0.0;
@@ -40,6 +38,29 @@ struct Cand
 		lm_prob = 0.0;
 
 		type = 0;
+		matched_tgt_rules = NULL;
+		rule_rank = 0;
+		cands_of_nt_leaves.clear();
+		cand_rank_vec.clear();
+		tgt_root_of_leaf_cands.clear();
+		rule_num = 0;
+	}
+	~Cand ()
+	{
+		tgt_root = -1;
+		tgt_wids.resize(0);
+
+		score = 0.0;
+		trans_probs.resize(0);
+		lm_prob = 0.0;
+
+		type = 0;
+		matched_tgt_rules = NULL;
+		rule_rank = 0;
+		cands_of_nt_leaves.resize(0);
+		cand_rank_vec.resize(0);
+		tgt_root_of_leaf_cands.resize(0);
+		rule_num = 0;
 	}
 };
 

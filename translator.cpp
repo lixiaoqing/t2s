@@ -95,7 +95,7 @@ string SentenceTranslator::translate_sentence()
 void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
 	vector<RuleMatchInfo> rule_match_info_vec = find_matched_rules_for_syntax_node(node);  // 查找匹配的规则
-	if (rule_match_info_vec.size()==0 &&node->span_lbound==node->span_rbound && node->children.size()==1 && node->children[0]->children.size()==0)
+	if (rule_match_info_vec.empty() && node->span_lbound==node->span_rbound && node->children.size()==1 && node->children[0]->children.size()==0)
 	{
 		add_cand_for_oov(node);                                                            // 为OOV生成候选, 并加入当前节点的翻译候选中
 	}
@@ -131,15 +131,16 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 {
 	Cand *oov_cand = new Cand;
 	oov_cand->type = 0;
+	oov_cand->trans_probs.resize(PROB_NUM,LogP_PseudoZero);
 	for (const auto w : feature_weight.trans)
 	{
 		oov_cand->score += w*LogP_PseudoZero;
 	}
-	oov_cand->tgt_wids   = {tgt_vocab->get_id("NULL")};
-	oov_cand->lm_prob    = lm_model->cal_increased_lm_score(oov_cand);
-	oov_cand->derive_len = 1;
-	oov_cand->tgt_root   = tgt_vocab->get_id("NN");
-	oov_cand->score     += feature_weight.lm*oov_cand->lm_prob + feature_weight.compose*1.0 + feature_weight.derive_len*1.0;
+	oov_cand->tgt_root     = tgt_vocab->get_id("NN");
+	oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
+	oov_cand->rule_num     = 1;
+	oov_cand->lm_prob      = lm_model->cal_increased_lm_score(oov_cand);
+	oov_cand->score       += feature_weight.lm*oov_cand->lm_prob + feature_weight.compose*1 + feature_weight.rule_num*1;
 	node->cand_organizer.add(oov_cand);
 }
 
@@ -221,6 +222,7 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 	
 	TgtRule &applied_rule = tgt_rules[rule_rank];
 	cand->tgt_root        = applied_rule.tgt_root;
+	cand->trans_probs     = applied_rule.probs;
 	size_t nt_idx = 0;
 	for (size_t i=0; i<applied_rule.tgt_leaves.size(); i++)
 	{
@@ -232,14 +234,21 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 		{
 			Cand* subcand = cands_of_nt_leaves[nt_idx][cand_rank_vec[nt_idx]];
 			cand->tgt_wids.insert(cand->tgt_wids.begin(),subcand->tgt_wids.begin(),subcand->tgt_wids.end());
+			cand->rule_num += subcand->rule_num;
+			for (size_t j=0; j<PROB_NUM; j++)
+			{
+				cand->trans_probs[j] += subcand->trans_probs[j];
+			}
 			cand->lm_prob += subcand->lm_prob;
+			cand->score   += subcand->score;
 			nt_idx++;
 		}
 	}
-	cand->lm_prob   += lm_model->cal_increased_lm_score(cand);
-	cand->derive_len = 1.0;
-	cand->score      = applied_rule.score + feature_weight.lm*cand->lm_prob + feature_weight.len*applied_rule.word_num
-                       + feature_weight.compose*applied_rule.is_composed_rule + feature_weight.derive_len*1.0;
+	double increased_lm_score = lm_model->cal_increased_lm_score(cand); 
+	cand->rule_num += 1;
+	cand->lm_prob  += increased_lm_score;
+	cand->score    += applied_rule.score + feature_weight.lm*increased_lm_score + feature_weight.len*applied_rule.word_num
+                      + feature_weight.compose*applied_rule.is_composed_rule + feature_weight.rule_num*1;
 	return cand;
 }
 
@@ -261,21 +270,24 @@ Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &c
 	glue_cand->type = 2;
 	glue_cand->cands_of_nt_leaves = cands_of_leaves;
 	glue_cand->cand_rank_vec      = cand_rank_vec;
+	glue_cand->tgt_root   = tgt_vocab->get_id("X-X-X");
 	for (size_t i=0; i<cands_of_leaves.size(); i++)
 	{
 		Cand *subcand = cands_of_leaves[i][cand_rank_vec[i]];
 		glue_cand->tgt_root_of_leaf_cands.push_back(subcand->tgt_root);
 		glue_cand->tgt_wids.insert( glue_cand->tgt_wids.end(),subcand->tgt_wids.begin(),subcand->tgt_wids.end() );
+		glue_cand->rule_num += subcand->rule_num;
+		for (size_t j=0; j<PROB_NUM; j++)
+		{
+			glue_cand->trans_probs[j] += subcand->trans_probs[j];
+		}
 		glue_cand->lm_prob += subcand->lm_prob;
+		glue_cand->score   += subcand->score;
 	}
-	glue_cand->tgt_root   = tgt_vocab->get_id("X-X-X");
-	glue_cand->lm_prob   += lm_model->cal_increased_lm_score(glue_cand);
-	glue_cand->derive_len =  1.0;
-	for (size_t i=0; i<cands_of_leaves.size(); i++)
-	{
-		glue_cand->score += cands_of_leaves[i][cand_rank_vec[i]]->score;
-	}
-	glue_cand->score += feature_weight.lm*glue_cand->lm_prob + feature_weight.glue*1.0 + feature_weight.derive_len*1.0;
+	double increased_lm_score = lm_model->cal_increased_lm_score(glue_cand);
+	glue_cand->lm_prob   += increased_lm_score;
+	glue_cand->rule_num   =  1;
+	glue_cand->score += feature_weight.lm*increased_lm_score + feature_weight.glue*1 + feature_weight.rule_num*1;
 	return glue_cand;
 }
 

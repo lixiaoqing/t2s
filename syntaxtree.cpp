@@ -5,6 +5,13 @@ SyntaxTree::SyntaxTree(const string &line_of_tree)
 	build_tree_from_str(line_of_tree);
 	update_span(root);
 	dump(root);
+	for (const auto &kvp : nodes_at_span)
+	{
+		cout<<hex<<kvp.first<<' '<<dec;
+		for (const auto node : kvp.second)
+			cout<<node->label<<' ';
+		cout<<endl;
+	}
 }
 
 void SyntaxTree::build_tree_from_str(const string &line_of_tree)
@@ -75,7 +82,18 @@ void SyntaxTree::update_span(SyntaxNode* node)
 		node->span_lbound = min(node->span_lbound,child->span_lbound);
 		node->span_rbound = max(node->span_rbound,child->span_rbound);
 	}
-	nodes_at_span[node->span_lbound << 16 + node->span_rbound].push_back(node);
+	int key = ((node->span_lbound)<<16) + node->span_rbound;
+	cout<<node->span_lbound<<'-'<<node->span_rbound<<' '<<hex<<key<<' ';
+	auto it = nodes_at_span.find(key);
+	if ( it == nodes_at_span.end() )
+	{
+		vector<SyntaxNode*> nodes = {node};
+		nodes_at_span.insert( make_pair(key,nodes) );
+	}
+	else
+	{
+		it->second.push_back(node);
+	}
 }
 
 void SyntaxTree::dump(SyntaxNode* node)

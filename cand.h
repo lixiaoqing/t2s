@@ -34,7 +34,7 @@ struct Cand
 		tgt_wids.clear();
 
 		score = 0.0;
-		trans_probs.clear();
+		trans_probs.resize(PROB_NUM,0);
 		lm_prob = 0.0;
 
 		type = 0;

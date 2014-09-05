@@ -63,9 +63,8 @@ struct Weight
 	vector<double> trans;
 	double lm;
 	double len;							//译文的单词数
-	double phrase_num;					//源端被切成的短语数
 	double compose;
-	double derive_len;
+	double rule_num;
 	double glue;
 };
 

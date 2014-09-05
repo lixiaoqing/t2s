@@ -111,17 +111,13 @@ void read_config(Filenames &fns,Parameter &para, Weight &weight, const string &c
 				{
 					ss>>weight.lm;
 				}
-				else if(feature == "phrase-num")
-				{
-					ss>>weight.phrase_num;
-				}
 				else if(feature == "compose")
 				{
 					ss>>weight.compose;
 				}
-				else if(feature == "derive-len")
+				else if(feature == "rule-num")
 				{
-					ss>>weight.derive_len;
+					ss>>weight.rule_num;
 				}
 				else if(feature == "glue")
 				{

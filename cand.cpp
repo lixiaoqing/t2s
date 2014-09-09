@@ -61,7 +61,7 @@ void CandOrganizer::sort_and_group_cands()
 	for (auto cand : all_cands)
 	{
 		auto it = tgt_root_to_cand_group.find(cand->tgt_root);
-		if ( it != tgt_root_to_cand_group.end() )
+		if ( it == tgt_root_to_cand_group.end() )
 		{
 			vector<Cand*> cand_vec = {cand};
 			tgt_root_to_cand_group.insert( make_pair(cand->tgt_root,cand_vec) );

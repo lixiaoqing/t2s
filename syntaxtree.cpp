@@ -83,7 +83,6 @@ void SyntaxTree::update_span(SyntaxNode* node)
 		node->span_rbound = max(node->span_rbound,child->span_rbound);
 	}
 	int key = ((node->span_lbound)<<16) + node->span_rbound;
-	cout<<node->span_lbound<<'-'<<node->span_rbound<<' '<<hex<<key<<' ';
 	auto it = nodes_at_span.find(key);
 	if ( it == nodes_at_span.end() )
 	{

@@ -38,14 +38,14 @@ lm::WordIndex LanguageModel::convert_to_kenlm_id(int wid)
 double LanguageModel::cal_increased_lm_score(Cand* cand) 
 {
 	RuleScore<Model> rule_score(*kenlm,cand->lm_state);
-	if ( cand->type == 0 || ( cand->type == 1 && cand->cands_of_nt_leaves.empty() ) )  //OOV候选或者由不含非终结符的规则生成的候选
+	if ( cand->type == 0 || ( cand->type == 1 && cand->cands_of_nt_leaves.empty() ) )  // OOV候选或者由不含非终结符的规则生成的候选
 	{
 		for (const auto wid : cand->tgt_wids)
 		{
 			rule_score.Terminal( convert_to_kenlm_id(wid) );
 		}
 	}
-	else if (cand->type == 1)
+	else if (cand->type == 1)                                                          // 由含非终结符的规则生成的候选
 	{
 		TgtRule &applied_rule = cand->matched_tgt_rules->at(cand->rule_rank);
 		size_t nt_idx = 0;
@@ -62,7 +62,7 @@ double LanguageModel::cal_increased_lm_score(Cand* cand)
 			}
 		}
 	}
-	else if (cand->type == 2)
+	else if (cand->type == 2)                                                          // glue候选
 	{
 		for (size_t nt_idx=0; nt_idx<cand->cands_of_nt_leaves.size(); nt_idx++)
 		{

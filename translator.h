@@ -44,7 +44,7 @@ class SentenceTranslator
 		string words_to_str(vector<int> &wids, bool drop_unk);
 
 		vector<RuleMatchInfo> find_matched_rules_for_syntax_node(SyntaxNode* cur_node);
-		void push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo &cur_match_info);
+		void push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo cur_match_info);
 
 	private:
 		Vocab *src_vocab;

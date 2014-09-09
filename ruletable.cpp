@@ -154,15 +154,15 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 	for (const auto &node_id : rulenode_ids)
 	{        
 		string node_str = src_vocab->get_word(node_id);
-		auto it = current->id2subtrie_map.find(node_str);
-		if ( it != current->id2subtrie_map.end() )
+		auto it = current->subtrie_map.find(node_str);
+		if ( it != current->subtrie_map.end() )
 		{
 			current = it->second;
 		}
 		else
 		{
 			RuleTrieNode* tmp = new RuleTrieNode();
-			current->id2subtrie_map.insert(make_pair(node_str,tmp));
+			current->subtrie_map.insert(make_pair(node_str,tmp));
 			current = tmp;
 		}
 	}

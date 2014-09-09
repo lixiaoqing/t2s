@@ -26,7 +26,7 @@ class RuleTrieNode
 		bool proc_flag;                                        // 该Trie节点的规则是否已被处理(分组和排序)过
 		vector<TgtRule> tgt_rules;                             // 一个规则源端对应的所有目标端
 		map <vector<int>, vector<TgtRule> > tgt_rule_group;    // 根据规则目标端叶节点的句法标签对规则进行分组, 对s2t/t2t系统有用
-		map <string, RuleTrieNode*> id2subtrie_map;            // 当前规则节点到下个规则节点的转换表
+		map <string, RuleTrieNode*> subtrie_map;               // 当前规则节点到下个规则节点的转换表
 };
 
 class RuleTable

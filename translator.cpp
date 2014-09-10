@@ -97,25 +97,24 @@ string SentenceTranslator::translate_sentence()
 ***************************************************************************************/
 void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
-	if ( node->children.empty() )
+	if ( node->children.empty() )                                                          // 跳过词汇节点
 		return;
 	cout<<"generating kbest for node "<<node->label<<endl<<flush; //4debug
 	vector<RuleMatchInfo> rule_match_info_vec = find_matched_rules_for_syntax_node(node);  // 查找匹配的规则
-	if ( rule_match_info_vec.empty() && node->span_lbound==node->span_rbound && node->children.size()==1 && node->children[0]->children.empty() )
+	if ( rule_match_info_vec.size()<=1 && node->type==POS )                                // 没有或者只有一个匹配到的规则(一元规则)
 	{
 		add_cand_for_oov(node);                                                            // 为OOV生成候选, 并加入当前节点的翻译候选中
 	}
 	else
 	{
 		Candpq candpq;			                                                           // 优先级队列, 用来缓存当前句法节点的翻译候选
-		for (auto &rule_match_info : rule_match_info_vec)                                  // 遍历匹配上的规则
+		for (size_t i=1;i<rule_match_info_vec.size();i++)                                  // 遍历匹配上的普通规则(不包括一元规则)
 		{
-			assert(!rule_match_info.rule_node->tgt_rules.empty());
-			if (rule_match_info.syntax_leaves.at(0) != rule_match_info.syntax_root)
-			{
-				cout<<"adding normal cands.\n"<<flush; //4debug
-				add_best_cand_to_pq_with_normal_rule(candpq,rule_match_info);              // 根据(非一元)规则生成候选, 并加入candpq
-			}
+			RuleMatchInfo &rule_match_info = rule_match_info_vec[i];
+			if ( rule_match_info.rule_node->tgt_rules.empty() )                            // 跳过空Trie节点(没有规则目标端)
+				continue;
+			cout<<"adding normal cands.\n"<<flush; //4debug
+			add_best_cand_to_pq_with_normal_rule(candpq,rule_match_info);                  // 根据(非一元)规则生成候选, 并加入candpq
 		}
 		if ( candpq.empty() )
 		{
@@ -124,7 +123,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		}
 		cout<<"cube pruning.\n"<<flush; //4debug
 		extend_cand_by_cube_pruning(candpq,node);                                          // 通过立方体剪枝对候选进行扩展
-		if (rule_match_info_vec[0].rule_node->tgt_rules.size() != 0)
+		if ( !rule_match_info_vec[0].rule_node->tgt_rules.empty() )
 		{
 			extend_cand_with_unary_rule(rule_match_info_vec[0]);                           // 根据一元规则对候选进行扩展
 		}
@@ -144,7 +143,7 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 {
 	cout<<"generating oov cand\n"<<endl<<flush; //4debug
 	Cand *oov_cand = new Cand;
-	oov_cand->type = 0;
+	oov_cand->type = OOV;
 	fill(oov_cand->trans_probs.begin(),oov_cand->trans_probs.end(),LogP_PseudoZero);
 	for (const auto w : feature_weight.trans)
 	{
@@ -225,7 +224,7 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 {
 	cout<<"generating cand from normal rule\n"<<flush; //4debug
 	Cand *cand = new Cand;
-	cand->type = 1;
+	cand->type = NORMAL;
 	// 记录当前候选的以下来源信息: 1) 使用的哪条规则; 2) 使用的每个非终结符叶节点中的哪个候选; 3) 使用的每个叶节点候选的目标端根节点id
 	cand->matched_tgt_rules  = &tgt_rules;
 	cand->rule_rank          = rule_rank;
@@ -286,7 +285,7 @@ Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &c
 {
 	cout<<"generating cand from glue rule\n"<<flush; //4debug
 	Cand *glue_cand = new Cand;
-	glue_cand->type = 2;
+	glue_cand->type = GLUE;
 	glue_cand->cands_of_nt_leaves = cands_of_leaves;
 	glue_cand->cand_rank_vec      = cand_rank_vec;
 	glue_cand->tgt_root           = tgt_vocab->get_id("X-X-X");
@@ -363,7 +362,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 			vector<int> new_cand_rank_vec = cur_cand->cand_rank_vec;
 			new_cand_rank_vec[i]++;
 			vector<int> new_key = base_key;
-			if (cur_cand->type == 1)
+			if (cur_cand->type == NORMAL)
 			{
 				new_key.push_back(cur_cand->rule_rank);
 			}
@@ -371,12 +370,12 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 			if (duplicate_set.count(new_key) != 0)
 			{
 				Cand *new_cand;
-				if (cur_cand->type == 1)              // 普通规则生成的候选
+				if (cur_cand->type == NORMAL)              // 普通规则生成的候选
 				{
 					new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank,cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
 					cout<<"normal cand generated.\n"; //4debug
 				}
-				else if (cur_cand->type == 2)         // glue规则生成的候选
+				else if (cur_cand->type == GLUE)          // glue规则生成的候选
 				{
 					new_cand = generate_cand_from_glue_rule(cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
 					cout<<"glue cand generated.\n"; //4debug
@@ -387,7 +386,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 		}
 	}
     // 对普通规则生成的候选, 考虑规则的下一位
-	if (cur_cand->type == 1 && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size())
+	if (cur_cand->type == NORMAL && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size())
 	{
 		vector<int> new_key = base_key;
 		new_key.push_back(cur_cand->rule_rank+1);
@@ -444,16 +443,16 @@ vector<RuleMatchInfo> SentenceTranslator::find_matched_rules_for_syntax_node(Syn
 {
 	vector<RuleMatchInfo> match_info_vec;
 	auto it = ruletable->get_root()->subtrie_map.find(cur_node->label);
-	if ( it==ruletable->get_root()->subtrie_map.end() || it->second->tgt_rules.empty() ) // 没找到或者Trie节点不包含规则目标端
+	if ( it==ruletable->get_root()->subtrie_map.end())                     // 没找到可用的规则, 此处不必要求Trie节点包含规则目标端, 以便进行扩展
 		return match_info_vec;
-	RuleMatchInfo root_rule = {it->second,cur_node,{cur_node}};                          // 一元规则, 即规则源端只含一个根节点
+	RuleMatchInfo root_rule = {it->second,cur_node,{cur_node}};            // 一元规则, 即规则源端只含一个根节点
 	match_info_vec.push_back(root_rule);
-	size_t last_beg = 0, last_end = match_info_vec.size();                               // 记录规则Trie树当前层匹配上的规则在match_info_vec中的起始和终止位置
+	size_t last_beg = 0, last_end = match_info_vec.size();                 // 记录规则Trie树当前层匹配上的规则在match_info_vec中的起始和终止位置
 	while(last_beg != last_end)
 	{
-		for (size_t cur_pos=last_beg; cur_pos!=last_end; cur_pos++)                      // 对当前层匹配上的规则进行扩展
+		for (size_t cur_pos=last_beg; cur_pos!=last_end; cur_pos++)        // 对当前层匹配上的规则进行扩展
 		{
-			push_matched_rules_at_next_level(match_info_vec,match_info_vec.at(cur_pos));
+			push_matched_rules_at_next_level(match_info_vec,cur_pos);
 		}
 		last_beg = last_end;
 		last_end = match_info_vec.size();
@@ -463,24 +462,17 @@ vector<RuleMatchInfo> SentenceTranslator::find_matched_rules_for_syntax_node(Syn
 
 /**************************************************************************************
  1. 函数功能: 考察当前匹配上的规则的下一层规则, 将能匹配上的加入match_info_vec
- 2. 入口参数: 当前匹配上的规则, !!注意不能传引用, 因为vector扩展时地址会变
+ 2. 入口参数: 当前匹配上的规则在match_info_vec中的位置
  3. 出口参数: 记录所有匹配规则的match_info_vec
  4. 算法简介: 遍历下一层规则, 将每条规则的源端与句法树节点进行对比, 看能否匹配上
 ***************************************************************************************/
-void SentenceTranslator::push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo cur_match_info)
+void SentenceTranslator::push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, size_t cur_pos)
 {
+	RuleMatchInfo cur_match_info = match_info_vec.at(cur_pos);                     // 此处不能用引用, 因为match_info_vec会因扩容而改变地址
 	for (auto &kvp : cur_match_info.rule_node->subtrie_map)
 	{
-		if ( kvp.second->tgt_rules.empty() )                                       // 跳过空Trie节点
-			continue;
 		vector<string> nodes_vec = Split(kvp.first,"|||");                         // 记录当前规则源端每个叶节点扩展出来的节点
-		if( nodes_vec.size() != cur_match_info.syntax_leaves.size() )  //4debug
-		{
-			cout<<kvp.first<<endl;
-			for (auto &leaf : cur_match_info.syntax_leaves)
-				cout<<leaf->label;
-			cout<<endl;
-		}
+		assert( nodes_vec.size() == cur_match_info.syntax_leaves.size() );
 		vector<SyntaxNode*> new_leaves;
 		RuleMatchInfo new_match_info;
 		for(size_t i=0; i<cur_match_info.syntax_leaves.size(); i++)
@@ -498,7 +490,8 @@ void SentenceTranslator::push_matched_rules_at_next_level(vector<RuleMatchInfo> 
 				if (nodes[j] != cur_match_info.syntax_leaves[i]->children[j]->label)
 					goto unmatch;
 			}
-			new_leaves.insert(new_leaves.end(), cur_match_info.syntax_leaves[i]->children.begin(), cur_match_info.syntax_leaves[i]->children.end());
+			vector<SyntaxNode*> &leaves_of_cur_child = cur_match_info.syntax_leaves[i]->children;
+			new_leaves.insert(new_leaves.end(), leaves_of_cur_child.begin(), leaves_of_cur_child.end());
 		}
 		new_match_info = {kvp.second,cur_match_info.syntax_root,new_leaves};
 		match_info_vec.push_back(new_match_info);

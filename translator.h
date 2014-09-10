@@ -14,7 +14,7 @@ struct Models
 	LanguageModel *lm_model;
 };
 
-// 记录规则匹配信息, 包括规则Trie树的节点, 以及句法树片段的头节点和叶子节点等信息
+// 记录规则匹配信息, 包括规则Trie树的节点, 以及输入句子句法树片段的头节点和叶子节点等信息
 struct RuleMatchInfo
 {
 	RuleTrieNode* rule_node;
@@ -44,7 +44,7 @@ class SentenceTranslator
 		string words_to_str(vector<int> &wids, bool drop_unk);
 
 		vector<RuleMatchInfo> find_matched_rules_for_syntax_node(SyntaxNode* cur_node);
-		void push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, RuleMatchInfo cur_match_info);
+		void push_matched_rules_at_next_level(vector<RuleMatchInfo> &match_info_vec, size_t cur_pos);
 
 	private:
 		Vocab *src_vocab;

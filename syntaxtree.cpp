@@ -3,7 +3,7 @@
 SyntaxTree::SyntaxTree(const string &line_of_tree)
 {
 	build_tree_from_str(line_of_tree);
-	update_span(root);
+	update_attrib(root);
 	dump(root);
 	for (const auto &kvp : nodes_at_span)
 	{
@@ -71,16 +71,28 @@ void SyntaxTree::build_tree_from_str(const string &line_of_tree)
 	sen_len = word_index;
 }
 
-void SyntaxTree::update_span(SyntaxNode* node)
+void SyntaxTree::update_attrib(SyntaxNode* node)
 {
 	for (const auto child : node->children)
 	{
 		if (child->span_lbound == 9999)
 		{
-			update_span(child);
+			update_attrib(child);
 		}
 		node->span_lbound = min(node->span_lbound,child->span_lbound);
 		node->span_rbound = max(node->span_rbound,child->span_rbound);
+		if ( node->children.empty() )
+		{
+			node->type = WORD;
+		}
+		else if ( node->span_lbound==node->span_rbound && node->children.size()==1 && node->children[0]->children.empty() )
+		{
+			node->type = POS;
+		}
+		else
+		{
+			node->type = CONSTITUENT;
+		}
 	}
 	int key = ((node->span_lbound)<<16) + node->span_rbound;
 	auto it = nodes_at_span.find(key);

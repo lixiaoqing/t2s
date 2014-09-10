@@ -13,6 +13,7 @@ struct SyntaxNode
 	vector<SyntaxNode*> children;
 	int span_lbound;                                 // 该节点对应的span的左边界
 	int span_rbound;                                 // 该节点对应的span的右边界
+	NodeType type;                                   // 该节点的类型, 可为 1.单词节点; 2.词性节点; 3.句法节点
 	CandOrganizer cand_organizer;                    // 组织该节点的翻译候选
 	
 	SyntaxNode ()
@@ -20,6 +21,7 @@ struct SyntaxNode
 		father      = NULL;
 		span_lbound = 9999;
 		span_rbound = -1;
+		type        = WORD;
 	}
 	
 };
@@ -31,7 +33,7 @@ class SyntaxTree
 
 	private:
 		void build_tree_from_str(const string &line_of_tree);
-		void update_span(SyntaxNode* node);
+		void update_attrib(SyntaxNode* node);
 		void dump(SyntaxNode* node);
 
 	public:

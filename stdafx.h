@@ -35,7 +35,7 @@ const size_t RULE_LEN_MAX=7;
 const double LogP_PseudoZero = -99.0;
 const double LogP_One = 0.0;
 
-enum CandType {OOV,NORMAL,GLUE};
+enum CandType {INIT,OOV,NORMAL,GLUE};
 enum NodeType {WORD,POS,CONSTITUENT};
 
 struct Filenames

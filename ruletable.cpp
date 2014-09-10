@@ -162,6 +162,8 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 		else
 		{
 			RuleTrieNode* tmp = new RuleTrieNode();
+			tmp->father = current;                  //4debug
+			tmp->rule_level_str = node_str;         //4debug
 			current->subtrie_map.insert(make_pair(node_str,tmp));
 			current = tmp;
 		}

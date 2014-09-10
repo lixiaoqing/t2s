@@ -37,7 +37,7 @@ struct Cand
 		trans_probs.resize(PROB_NUM,0);
 		lm_prob = 0.0;
 
-		type = OOV;
+		type = INIT;
 		matched_tgt_rules = NULL;
 		rule_rank = 0;
 		cands_of_nt_leaves.clear();
@@ -54,7 +54,7 @@ struct Cand
 		trans_probs.resize(0);
 		lm_prob = 0.0;
 
-		type = OOV;
+		type = INIT;
 		matched_tgt_rules = NULL;
 		rule_rank = 0;
 		cands_of_nt_leaves.resize(0);

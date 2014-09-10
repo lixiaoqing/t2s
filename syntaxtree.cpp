@@ -109,7 +109,7 @@ void SyntaxTree::update_attrib(SyntaxNode* node)
 
 void SyntaxTree::dump(SyntaxNode* node)
 {
-	cout<<" ( "<<node->label<<' '<<node->span_lbound<<' '<<node->span_rbound;
+	cout<<" ( "<<node->label<<' '<<node->span_lbound<<' '<<node->span_rbound<<' '<<node->type;
 	for (const auto &child : node->children)
 		dump(child);
 	cout<<" ) ";

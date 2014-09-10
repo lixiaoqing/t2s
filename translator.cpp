@@ -143,6 +143,20 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			add_best_cand_to_pq_with_glue_rule(candpq,node);                               // 使用glue规则生成候选, 并加入candpq
 		}
 		extend_cand_by_cube_pruning(candpq,node);                                          // 通过立方体剪枝对候选进行扩展
+
+		cout<<"before expand with unary rule, kbest cands at node "<<node->label<<endl<<flush; //4debug
+		for (auto cand : node->cand_organizer.all_cands)  //dump kbest at node, 4debug
+		{
+			cout<<"score: "<<cand->score<<endl;
+			cout<<"tgt root: "<<tgt_vocab->get_word(cand->tgt_root)<<endl;
+			cout<<"translation: ";
+			for (auto wid : cand->tgt_wids)
+			{
+				cout<<tgt_vocab->get_word(wid)<<' ';
+			}
+			cout<<endl<<flush;
+		}
+
 		if ( !rule_match_info_vec.empty() && !rule_match_info_vec[0].rule_node->tgt_rules.empty() )
 		{
 			extend_cand_with_unary_rule(rule_match_info_vec[0]);                           // 根据一元规则对候选进行扩展
@@ -153,10 +167,20 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			candpq.pop();
 		}
 	}
-	cout<<"sort and group cands.\n"<<flush; //4debug
 	node->cand_organizer.sort_and_group_cands();                                           // 对候选进行排序和分组
-	cout<<"after sort and group cands.\n"<<flush; //4debug
-	cout<<"kbest generated.\n"<<flush; //4debug
+
+	cout<<"final kbest cands at node "<<node->label<<endl<<flush; //4debug
+	for (auto cand : node->cand_organizer.all_cands)  //dump kbest at node, 4debug
+	{
+		cout<<"score: "<<cand->score<<endl;
+		cout<<"tgt root: "<<tgt_vocab->get_word(cand->tgt_root)<<endl;
+		cout<<"translation: ";
+		for (auto wid : cand->tgt_wids)
+		{
+			cout<<tgt_vocab->get_word(wid)<<' ';
+		}
+		cout<<endl<<flush;
+	}
 }
 
 void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
@@ -169,7 +193,8 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 		oov_cand->score += w*LogP_PseudoZero;
 	}
 	oov_cand->tgt_root     = tgt_vocab->get_id("NN");
-	oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
+	//oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
+	oov_cand->tgt_wids     = {tgt_vocab->get_id(node->children[0]->label)};
 	oov_cand->rule_num     = 1;
 	oov_cand->lm_prob      = lm_model->cal_increased_lm_score(oov_cand);
 	oov_cand->score       += feature_weight.lm*oov_cand->lm_prob + feature_weight.compose*1 + feature_weight.rule_num*1;
@@ -423,12 +448,11 @@ void SentenceTranslator::extend_cand_with_unary_rule(RuleMatchInfo &rule_match_i
 	{
 		rule_match_info.rule_node->group_and_sort_tgt_rules();
 	}
-	for (auto &cand : rule_match_info.syntax_root->cand_organizer.all_cands)
+	vector<Cand*> old_cands = rule_match_info.syntax_root->cand_organizer.all_cands;
+	for (auto &cand : old_cands)
 	{
 		if ( cand->tgt_root == tgt_vocab->get_id("X-X-X") )
 			continue;
-		//cout<<"cand addr: "<<cand<<endl; //4debug
-		//cout<<"tgt root of current cand: "<<tgt_vocab->get_word(cand->tgt_root)<<endl<<flush; //4debug
 		vector<int> tgt_root_id = {cand->tgt_root,0};  //TODO
 		auto it = rule_match_info.rule_node->tgt_rule_group.find(tgt_root_id);
 		if ( it == rule_match_info.rule_node->tgt_rule_group.end() )

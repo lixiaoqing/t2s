@@ -5,7 +5,7 @@
 
 struct TgtRule
 {
-	bool operator<(const TgtRule &rhs) const{return score<rhs.score;};
+	bool operator<(const TgtRule &rhs) const{return score > rhs.score;};  // 从大到小排序
 	int word_num;                               // 规则目标端的单词数
 	int tgt_root;                               // 规则目标端根节点的标签
 	vector<int> tgt_leaves;                     // 规则目标端叶节点的单词或非终结符的id序列

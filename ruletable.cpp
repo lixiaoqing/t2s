@@ -5,15 +5,12 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 	for (auto &tgt_rule : tgt_rules)
 	{
 		assert ( tgt_rule.group_id.empty() );
-		if ( tgt_rule.group_id.empty() )    //TODO, 肯定为空吧
+		for (size_t i=0; i<tgt_rule.aligned_src_positions.size(); i++)        // 遍历规则目标端叶节点
 		{
-			for (size_t i=0; i<tgt_rule.aligned_src_positions.size(); i++)        // 遍历规则目标端叶节点
-			{
-				if (tgt_rule.aligned_src_positions[i] == -1)                      // 跳过词汇节点
-					continue;
-				tgt_rule.group_id.push_back(tgt_rule.tgt_leaves[i]);              // 非终结符
-				tgt_rule.group_id.push_back(tgt_rule.aligned_src_positions[i]);   // 非终结符在源端句法树片段叶节点中对应的位置
-			}
+			if (tgt_rule.aligned_src_positions[i] == -1)                      // 跳过词汇节点
+				continue;
+			tgt_rule.group_id.push_back(tgt_rule.tgt_leaves[i]);              // 非终结符
+			tgt_rule.group_id.push_back(tgt_rule.aligned_src_positions[i]);   // 非终结符在源端句法树片段叶节点中对应的位置
 		}
 
 		auto it = tgt_rule_group.find(tgt_rule.group_id);
@@ -30,7 +27,12 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 
 	for (auto &kvp : tgt_rule_group)
 	{
-		sort(kvp.second.begin(),kvp.second.end());
+		sort( kvp.second.begin(), kvp.second.end() );
+		for (auto &tgt_rule : kvp.second)  //4debug
+		{
+			cout<<tgt_rule.score<<' ';
+		}
+		cout<<endl;
 	}
 
 	proc_flag = true;

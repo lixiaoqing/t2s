@@ -15,7 +15,7 @@ SentenceTranslator::SentenceTranslator(const Models &i_models, const Parameter &
 
 SentenceTranslator::~SentenceTranslator()
 {
-	//TODO
+	delete src_tree;
 }
 
 string SentenceTranslator::words_to_str(vector<int> &wids, bool drop_unk)
@@ -464,7 +464,7 @@ void SentenceTranslator::extend_cand_with_unary_rule(RuleMatchInfo &rule_match_i
 	{
 		if ( cand->tgt_root == tgt_vocab->get_id("X-X-X") )
 			continue;
-		vector<int> tgt_root_id = {cand->tgt_root,0};  //TODO
+		vector<int> tgt_root_id = {cand->tgt_root,0};
 		auto it = rule_match_info.rule_node->tgt_rule_group.find(tgt_root_id);
 		if ( it == rule_match_info.rule_node->tgt_rule_group.end() )
 			continue;

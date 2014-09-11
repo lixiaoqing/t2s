@@ -23,13 +23,23 @@ struct SyntaxNode
 		span_rbound = -1;
 		type        = WORD;
 	}
-	
+	~SyntaxNode ()
+	{
+		for (auto node : children)
+		{
+			delete node;
+		}
+	}
 };
 
 class SyntaxTree
 {
 	public:
 		SyntaxTree(const string &line_of_tree);
+		~SyntaxTree()
+		{
+			delete root;
+		}
 
 	private:
 		void build_tree_from_str(const string &line_of_tree);

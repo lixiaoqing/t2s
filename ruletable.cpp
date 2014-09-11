@@ -28,6 +28,7 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 	for (auto &kvp : tgt_rule_group)
 	{
 		sort( kvp.second.begin(), kvp.second.end() );
+		reverse( kvp.second.begin(), kvp.second.end() );
 		for (auto &tgt_rule : kvp.second)  //4debug
 		{
 			cout<<tgt_rule.score<<' ';

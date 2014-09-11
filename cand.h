@@ -78,6 +78,13 @@ bool larger( const Cand *pl, const Cand *pr );
 class CandOrganizer
 {
 	public:
+		~CandOrganizer()
+		{
+			for (auto cand : all_cands)
+			{
+				delete cand;
+			}
+		}
 		bool add(Cand *cand_ptr);
 		Cand* top() { return all_cands.front(); }
 		Cand* at(size_t i) { return all_cands.at(i);}

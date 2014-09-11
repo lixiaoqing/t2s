@@ -103,7 +103,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 
 	for (auto &rule_match_info : rule_match_info_vec)  //dump matched rules, 4debug
 	{
-		cout<<"==========\n";
+		cout<<"matched src side\n==========\n";
 		RuleTrieNode *cur_rule_node = rule_match_info.rule_node;
 		vector<string> src_rule;
 		while (cur_rule_node->father != NULL)
@@ -121,7 +121,17 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		{
 			cout<<leaf->label<<' ';
 		}
-		cout<<endl<<"==========\n"<<flush;
+		cout<<endl<<"==========\navailable tgt side\n"<<flush;
+		for (auto &tgt_rule : rule_match_info.rule_node->tgt_rules)
+		{
+			cout<<"-----------\n";
+			cout<<tgt_vocab->get_word(tgt_rule.tgt_root)<<endl;
+			for (auto wid : tgt_rule.tgt_leaves)
+			{
+				cout<<tgt_vocab->get_word(wid)<<' ';
+			}
+			cout<<"\n----------\n";
+		}
 	}
 
 	if ( rule_match_info_vec.size()<=1 && node->type==POS )                                // 词性节点, 没有或者只有一个匹配到的规则(一元规则)
@@ -142,6 +152,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		{
 			add_best_cand_to_pq_with_glue_rule(candpq,node);                               // 使用glue规则生成候选, 并加入candpq
 		}
+		cout<<"before cube pruning\n"<<flush; //4debug
 		extend_cand_by_cube_pruning(candpq,node);                                          // 通过立方体剪枝对候选进行扩展
 
 		cout<<"before expand with unary rule, kbest cands at node "<<node->label<<endl<<flush; //4debug
@@ -378,11 +389,11 @@ void SentenceTranslator::extend_cand_by_cube_pruning(Candpq &candpq, SyntaxNode*
 		Cand *best_cand = candpq.top();
 		candpq.pop();
 		bool flag = node->cand_organizer.add(best_cand);
+		add_neighbours_to_pq(candpq,best_cand,duplicate_set);
 		if (flag == false)
 		{
 			delete best_cand;
 		}
-		add_neighbours_to_pq(candpq,best_cand,duplicate_set);
 	}
 }
 
@@ -411,7 +422,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 				new_key.push_back(cur_cand->rule_rank);
 			}
 			new_key.insert( new_key.end(),new_cand_rank_vec.begin(),new_cand_rank_vec.end() );
-			if (duplicate_set.count(new_key) != 0)
+			if (duplicate_set.count(new_key) == 0)
 			{
 				Cand *new_cand;
 				if (cur_cand->type == NORMAL)              // 普通规则生成的候选
@@ -428,14 +439,14 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 		}
 	}
     // 对普通规则生成的候选, 考虑规则的下一位
-	if (cur_cand->type == NORMAL && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size())
+	if ( cur_cand->type == NORMAL && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size() )
 	{
 		vector<int> new_key = base_key;
 		new_key.push_back(cur_cand->rule_rank+1);
 		new_key.insert( new_key.end(),cur_cand->cand_rank_vec.begin(),cur_cand->cand_rank_vec.end() );
-		if (duplicate_set.count(new_key) != 0)
+		if (duplicate_set.count(new_key) == 0)
 		{
-			Cand *new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank,cur_cand->cands_of_nt_leaves,cur_cand->cand_rank_vec);
+			Cand *new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank+1,cur_cand->cands_of_nt_leaves,cur_cand->cand_rank_vec);
 			candpq.push(new_cand);
 			duplicate_set.insert(new_key);
 		}

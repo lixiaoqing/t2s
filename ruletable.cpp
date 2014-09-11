@@ -4,6 +4,7 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 {
 	for (auto &tgt_rule : tgt_rules)
 	{
+		assert ( tgt_rule.group_id.empty() );
 		if ( tgt_rule.group_id.empty() )    //TODO, 肯定为空吧
 		{
 			for (size_t i=0; i<tgt_rule.aligned_src_positions.size(); i++)        // 遍历规则目标端叶节点
@@ -90,7 +91,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		fin.read((char*)&tgt_rule.is_composed_rule,sizeof(short int));
 		fin.read((char*)&tgt_rule.is_lexical_rule,sizeof(short int));
 
-		if (false)
+		if (true)
 		{
 			for (auto id : rulenode_ids)
 			{

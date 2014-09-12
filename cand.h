@@ -18,12 +18,15 @@ struct Cand
 
 	//来源信息, 记录候选是如何生成的
 	CandType type;                                 // 候选的类型(1.由OOV生成; 2.由普通规则生成; 3.由glue规则生成)
+	RuleTrieNode* src_rule;                        // 生成当前候选的规则的源端
 	vector<TgtRule>* matched_tgt_rules;            // 目标端非终结符相同的一组规则
 	int rule_rank;                                 // 当前候选所用的规则在matched_tgt_rules中的排名
 	vector<vector<Cand*> > cands_of_nt_leaves;     // 规则源端非终结符叶节点的翻译候选(glue规则所有叶节点均为非终结符)
 	vector<int> cand_rank_vec;                     // 记录当前候选所用的每个非终结符叶节点的翻译候选的排名
 	vector<int> tgt_root_of_leaf_cands;            // 记录源端非终结符叶节点的翻译候选的目标端根节点
 	int rule_num;                                  // 使用的规则的数量
+	int grule_num;                                 // 使用的glue规则的数量
+	int crule_num;                                 // 使用的compose规则的数量
 
 	//语言模型状态信息
 	lm::ngram::ChartState lm_state;
@@ -38,12 +41,15 @@ struct Cand
 		lm_prob = 0.0;
 
 		type = INIT;
+		src_rule = NULL;
 		matched_tgt_rules = NULL;
 		rule_rank = 0;
 		cands_of_nt_leaves.clear();
 		cand_rank_vec.clear();
 		tgt_root_of_leaf_cands.clear();
-		rule_num = 0;
+		rule_num  = 0;
+		grule_num = 0;
+		crule_num = 0;
 	}
 	~Cand ()
 	{
@@ -55,12 +61,15 @@ struct Cand
 		lm_prob = 0.0;
 
 		type = INIT;
+		src_rule = NULL;
 		matched_tgt_rules = NULL;
 		rule_rank = 0;
 		cands_of_nt_leaves.resize(0);
 		cand_rank_vec.resize(0);
 		tgt_root_of_leaf_cands.resize(0);
-		rule_num = 0;
+		rule_num  = 0;
+		grule_num = 0;
+		crule_num = 0;
 	}
 };
 
@@ -86,9 +95,6 @@ class CandOrganizer
 			}
 		}
 		bool add(Cand *cand_ptr);
-		Cand* top() { return all_cands.front(); }
-		Cand* at(size_t i) { return all_cands.at(i);}
-		int size() { return all_cands.size();  }
 		void sort_and_group_cands();
 	private:
 		bool is_bound_same(const Cand *a, const Cand *b);

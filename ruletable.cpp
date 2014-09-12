@@ -29,11 +29,13 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 	{
 		sort( kvp.second.begin(), kvp.second.end() );
 		reverse( kvp.second.begin(), kvp.second.end() );
+		/*
 		for (auto &tgt_rule : kvp.second)  //4debug
 		{
 			cout<<tgt_rule.score<<' ';
 		}
 		cout<<endl;
+		*/
 	}
 
 	proc_flag = true;
@@ -48,6 +50,7 @@ RuleTable::RuleTable(const size_t size_limit,bool load_alignment,const Weight &i
 	weight=i_weight;
 	root=new RuleTrieNode;
 	load_rule_table(rule_table_file);
+	group_rules_for_subtrie(root);
 }
 
 void RuleTable::load_rule_table(const string &rule_table_file)
@@ -94,7 +97,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		fin.read((char*)&tgt_rule.is_composed_rule,sizeof(short int));
 		fin.read((char*)&tgt_rule.is_lexical_rule,sizeof(short int));
 
-		if (true)
+		if (false)
 		{
 			for (auto id : rulenode_ids)
 			{
@@ -166,8 +169,8 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 		else
 		{
 			RuleTrieNode* tmp = new RuleTrieNode();
-			tmp->father = current;                  //4debug
-			tmp->rule_level_str = node_str;         //4debug
+			tmp->father = current;
+			tmp->rule_level_str = node_str;
 			current->subtrie_map.insert(make_pair(node_str,tmp));
 			current = tmp;
 		}
@@ -183,6 +186,15 @@ void RuleTable::add_rule_to_trie(const vector<int> &rulenode_ids, const TgtRule 
 		{
 			(*it) = tgt_rule;
 		}
+	}
+}
+
+void RuleTable::group_rules_for_subtrie(RuleTrieNode *node)
+{
+	node->group_and_sort_tgt_rules();
+	for (auto &kvp : node->subtrie_map)
+	{
+		group_rules_for_subtrie(kvp.second);
 	}
 }
 

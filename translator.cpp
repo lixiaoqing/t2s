@@ -132,7 +132,7 @@ string SentenceTranslator::translate_sentence()
 		for(size_t beg=0;beg<src_sen_len-span;beg++)
 		{
 			int end = beg + span;
-			cout<<"generating kbest for span "<<beg<<'-'<<end<<endl; //4debug
+			//cout<<"generating kbest for span "<<beg<<'-'<<end<<endl; //4debug
 			auto it = src_tree->nodes_at_span.find((beg<<16) + end);
 			if ( it == src_tree->nodes_at_span.end() )
 				continue;
@@ -145,8 +145,6 @@ string SentenceTranslator::translate_sentence()
 			}
 		}
 	}
-	cout<<"all node kbest generated\n"<<flush;
-	cout<<words_to_str(src_tree->root->cand_organizer.all_cands[0]->tgt_wids,true)<<flush;
 	return words_to_str(src_tree->root->cand_organizer.all_cands[0]->tgt_wids,true);
 }
 
@@ -160,9 +158,10 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
 	if ( node->children.empty() )                                                          // 跳过词汇节点
 		return;
-	cout<<"generating kbest for node "<<node->label<<endl<<flush; //4debug
+	//cout<<"generating kbest for node "<<node->label<<endl<<flush; //4debug
 	vector<RuleMatchInfo> rule_match_info_vec = find_matched_rules_for_syntax_node(node);  // 查找匹配的规则
 
+	/*
 	for (auto &rule_match_info : rule_match_info_vec)  //dump matched rules, 4debug
 	{
 		cout<<"matched src side\n==========\n";
@@ -195,6 +194,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 			cout<<"\n----------\n";
 		}
 	}
+	*/
 
 	if ( rule_match_info_vec.size()<=1 && node->type==POS )                                // 词性节点, 没有或者只有一个匹配到的规则(一元规则)
 	{
@@ -214,21 +214,8 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		{
 			add_best_cand_to_pq_with_glue_rule(candpq,node);                               // 使用glue规则生成候选, 并加入candpq
 		}
-		cout<<"before cube pruning\n"<<flush; //4debug
+		//cout<<"before cube pruning\n"<<flush; //4debug
 		extend_cand_by_cube_pruning(candpq,node);                                          // 通过立方体剪枝对候选进行扩展
-
-		cout<<"before expand with unary rule, kbest cands at node "<<node->label<<endl<<flush; //4debug
-		for (auto cand : node->cand_organizer.all_cands)  //dump kbest at node, 4debug
-		{
-			cout<<"score: "<<cand->score<<endl;
-			cout<<"tgt root: "<<tgt_vocab->get_word(cand->tgt_root)<<endl;
-			cout<<"translation: ";
-			for (auto wid : cand->tgt_wids)
-			{
-				cout<<tgt_vocab->get_word(wid)<<' ';
-			}
-			cout<<endl<<flush;
-		}
 
 		if ( !rule_match_info_vec.empty() && !rule_match_info_vec[0].rule_node->tgt_rules.empty() )
 		{
@@ -242,6 +229,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 	}
 	node->cand_organizer.sort_and_group_cands();                                           // 对候选进行排序和分组
 
+	/*
 	cout<<"final kbest cands at node "<<node->label<<endl<<flush; //4debug
 	for (auto cand : node->cand_organizer.all_cands)  //dump kbest at node, 4debug
 	{
@@ -254,6 +242,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		}
 		cout<<endl<<flush;
 	}
+	*/
 }
 
 void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
@@ -283,11 +272,6 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 ***************************************************************************************/
 void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, RuleMatchInfo &rule_match_info)
 {
-	if (rule_match_info.rule_node->proc_flag == false)
-	{
-		rule_match_info.rule_node->group_and_sort_tgt_rules();                           // 根据规则目标端的非终结符及其对齐关系进行分组
-	}
-
 	vector<map<int, vector<Cand*> >* > cand_group_vec;                                   // 存储所有非终结符叶节点的候选分组表
 	for (const auto &syntax_leaf : rule_match_info.syntax_leaves)
 	{
@@ -354,6 +338,7 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 	
 	TgtRule &applied_rule = tgt_rules[rule_rank];
 
+	/*
 	cout<<"applying rule\n----------\n";  //dump rule tgt side, 4debug
 	cout<<tgt_vocab->get_word(applied_rule.tgt_root)<<endl;
 	for (size_t i=0; i<applied_rule.tgt_leaves.size(); i++)
@@ -361,6 +346,7 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 		cout<<tgt_vocab->get_word(applied_rule.tgt_leaves[i])<<' ';
 	}
 	cout<<"\n------------\n"<<flush;
+	*/
 
 	cand->tgt_root        = applied_rule.tgt_root;
 	cand->trans_probs     = applied_rule.probs;
@@ -374,7 +360,7 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 		else
 		{
 			Cand* subcand = cands_of_nt_leaves[nt_idx][cand_rank_vec[nt_idx]];
-			cout<<"len of subcand: "<<subcand->tgt_wids.size()<<endl<<flush;  //4debug
+			//cout<<"len of subcand: "<<subcand->tgt_wids.size()<<endl<<flush;  //4debug
 			cand->tgt_wids.insert( cand->tgt_wids.end(),subcand->tgt_wids.begin(),subcand->tgt_wids.end() );
 			cand->rule_num  += subcand->rule_num;
 			cand->grule_num += subcand->grule_num;
@@ -417,6 +403,7 @@ Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &c
 	glue_cand->cand_rank_vec      = cand_rank_vec;
 	glue_cand->tgt_root           = tgt_vocab->get_id("X-X-X");
 
+	/*
 	cout<<"applying glue rule\n----------\n";  //dump glue rule tgt side, 4debug
 	cout<<"X-X-X"<<endl;
 	for (size_t i=0; i<cands_of_leaves.size(); i++)
@@ -425,6 +412,7 @@ Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &c
 		cout<<tgt_vocab->get_word(subcand->tgt_root)<<' ';
 	}
 	cout<<"\n------------\n"<<flush;
+	*/
 
 	for (size_t i=0; i<cands_of_leaves.size(); i++)
 	{
@@ -527,10 +515,6 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 
 void SentenceTranslator::extend_cand_with_unary_rule(RuleMatchInfo &rule_match_info)
 {
-	if (rule_match_info.rule_node->proc_flag == false)
-	{
-		rule_match_info.rule_node->group_and_sort_tgt_rules();
-	}
 	vector<Cand*> old_cands = rule_match_info.syntax_root->cand_organizer.all_cands;
 	for (auto &cand : old_cands)
 	{

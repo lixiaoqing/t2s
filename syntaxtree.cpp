@@ -4,6 +4,7 @@ SyntaxTree::SyntaxTree(const string &line_of_tree)
 {
 	build_tree_from_str(line_of_tree);
 	update_attrib(root);
+	/*
 	dump(root);
 	for (const auto &kvp : nodes_at_span)
 	{
@@ -12,6 +13,7 @@ SyntaxTree::SyntaxTree(const string &line_of_tree)
 			cout<<node->label<<' ';
 		cout<<endl;
 	}
+	*/
 }
 
 void SyntaxTree::build_tree_from_str(const string &line_of_tree)

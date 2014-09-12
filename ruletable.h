@@ -45,6 +45,7 @@ class RuleTable
 	private:
 		void load_rule_table(const string &rule_table_file);
 		void add_rule_to_trie(const vector<int> &node_ids, const TgtRule &tgt_rule);
+		void group_rules_for_subtrie(RuleTrieNode *node);
 
 	private:
 		int RULE_NUM_LIMIT;                      // 每个规则源端最多加载的目标端个数 

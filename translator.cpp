@@ -69,7 +69,7 @@ vector<string> SentenceTranslator::get_applied_rules(size_t sen_id)
  1. 函数功能: 获取当前候选所使用的规则
  2. 入口参数: 当前候选的指针
  3. 出口参数: 用于记录规则的applied_rules
- 4. 算法简介: 通过递归的方式回溯查找所使用的规则
+ 4. 算法简介: 通过递归的方式自顶向下回溯, 查找所使用的规则
 ***************************************************************************************/
 void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 {
@@ -132,7 +132,6 @@ string SentenceTranslator::translate_sentence()
 		for(size_t beg=0;beg<src_sen_len-span;beg++)
 		{
 			int end = beg + span;
-			//cout<<"generating kbest for span "<<beg<<'-'<<end<<endl; //4debug
 			auto it = src_tree->nodes_at_span.find((beg<<16) + end);
 			if ( it == src_tree->nodes_at_span.end() )
 				continue;
@@ -158,43 +157,7 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 {
 	if ( node->children.empty() )                                                          // 跳过词汇节点
 		return;
-	//cout<<"generating kbest for node "<<node->label<<endl<<flush; //4debug
 	vector<RuleMatchInfo> rule_match_info_vec = find_matched_rules_for_syntax_node(node);  // 查找匹配的规则
-
-	/*
-	for (auto &rule_match_info : rule_match_info_vec)  //dump matched rules, 4debug
-	{
-		cout<<"matched src side\n==========\n";
-		RuleTrieNode *cur_rule_node = rule_match_info.rule_node;
-		vector<string> src_rule;
-		while (cur_rule_node->father != NULL)
-		{
-			src_rule.push_back(cur_rule_node->rule_level_str);
-			cur_rule_node = cur_rule_node->father;
-		}
-		for (int i=src_rule.size()-1;i>=0;i--)
-		{
-			cout<<src_rule[i]<<endl<<flush;
-		}
-		cout<<"@@@\n"<<flush;
-		cout<<rule_match_info.syntax_root->label<<endl;
-		for (auto leaf : rule_match_info.syntax_leaves)
-		{
-			cout<<leaf->label<<' ';
-		}
-		cout<<endl<<"==========\navailable tgt side\n"<<flush;
-		for (auto &tgt_rule : rule_match_info.rule_node->tgt_rules)
-		{
-			cout<<"-----------\n";
-			cout<<tgt_vocab->get_word(tgt_rule.tgt_root)<<endl;
-			for (auto wid : tgt_rule.tgt_leaves)
-			{
-				cout<<tgt_vocab->get_word(wid)<<' ';
-			}
-			cout<<"\n----------\n";
-		}
-	}
-	*/
 
 	if ( rule_match_info_vec.size()<=1 && node->type==POS )                                // 词性节点, 没有或者只有一个匹配到的规则(一元规则)
 	{
@@ -214,7 +177,6 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		{
 			add_best_cand_to_pq_with_glue_rule(candpq,node);                               // 使用glue规则生成候选, 并加入candpq
 		}
-		//cout<<"before cube pruning\n"<<flush; //4debug
 		extend_cand_by_cube_pruning(candpq,node);                                          // 通过立方体剪枝对候选进行扩展
 
 		if ( !rule_match_info_vec.empty() && !rule_match_info_vec[0].rule_node->tgt_rules.empty() )
@@ -228,23 +190,14 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		}
 	}
 	node->cand_organizer.sort_and_group_cands();                                           // 对候选进行排序和分组
-
-	/*
-	cout<<"final kbest cands at node "<<node->label<<endl<<flush; //4debug
-	for (auto cand : node->cand_organizer.all_cands)  //dump kbest at node, 4debug
-	{
-		cout<<"score: "<<cand->score<<endl;
-		cout<<"tgt root: "<<tgt_vocab->get_word(cand->tgt_root)<<endl;
-		cout<<"translation: ";
-		for (auto wid : cand->tgt_wids)
-		{
-			cout<<tgt_vocab->get_word(wid)<<' ';
-		}
-		cout<<endl<<flush;
-	}
-	*/
 }
 
+/**************************************************************************************
+ 1. 函数功能: 生成OOV候选, 并加入当前句法节点的cand_organizer中
+ 2. 入口参数: 指向句法树节点的指针
+ 3. 出口参数: 无
+ 4. 算法简介: 为候选的各项属性赋值, 并计算候选得分
+***************************************************************************************/
 void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 {
 	Cand *oov_cand = new Cand;
@@ -265,8 +218,8 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 }
 
 /**************************************************************************************
- 1. 函数功能: 对每个规则匹配信息, 生成候选并加入candpq中
- 2. 入口参数: 规则匹配信息, 包括规则Trie节点, 目标端根节点, 目标端叶节点
+ 1. 函数功能: 对每条规则匹配信息, 生成最优候选并加入candpq中
+ 2. 入口参数: 规则匹配信息, 包括规则Trie节点, 源端句法树片段的根节点和叶节点
  3. 出口参数: 缓存当前节点翻译候选的candpq
  4. 算法简介: 见注释
 ***************************************************************************************/
@@ -285,8 +238,7 @@ void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, Ru
 	{
 		TgtRule &best_tgt_rule = kvp.second[0];                                          // 取出每组规则中最好的
 		vector<vector<Cand*> > cands_of_nt_leaves;                                       // 存储规则源端非终结符叶节点的翻译候选
-		vector<int> rank_vec;
-		Cand *cand = NULL;
+		bool is_match = true;
 		for (size_t i=0;i<best_tgt_rule.aligned_src_positions.size();i++)                // 遍历规则目标端的每一个叶节点
 		{
 			int src_idx = best_tgt_rule.aligned_src_positions[i];                        // 该叶节点在规则源端对应的位置
@@ -295,7 +247,7 @@ void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, Ru
 				continue;
 			auto it = cand_group_vec[src_idx]->find(best_tgt_rule.tgt_leaves[i]);
 			auto it_glue = cand_group_vec[src_idx]->find( tgt_vocab->get_id("X-X-X") );
-			if ( it != cand_group_vec[src_idx]->end() )                                  // 有能够匹配当前非终结符叶节点的翻译候选
+			if ( it != cand_group_vec[src_idx]->end() )                                  // 有能够匹配当前规则目标端非终结符叶节点的翻译候选
 			{
 				cands_of_nt_leaves.push_back(it->second);
 			}
@@ -304,19 +256,23 @@ void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, Ru
 				cands_of_nt_leaves.push_back(it_glue->second);
 			}
 			else
-				goto unmatch;
+			{
+				is_match = false;
+				break;
+			}
 		}
-		assert( !best_tgt_rule.tgt_leaves.empty() );
-		rank_vec.resize(cands_of_nt_leaves.size(),0);
-		cand = generate_cand_from_normal_rule(kvp.second,0,cands_of_nt_leaves,rank_vec); // 根据规则和叶节点候选生成当前节点的候选
-		cand->src_rule = rule_match_info.rule_node;
-		candpq.push(cand);
-unmatch:;
+		if (is_match == true)
+		{
+			vector<int> rank_vec(cands_of_nt_leaves.size(),0);
+			Cand *cand = generate_cand_from_normal_rule(kvp.second,0,cands_of_nt_leaves,rank_vec); // 根据规则和叶节点候选生成当前节点的候选
+			cand->src_rule = rule_match_info.rule_node;
+			candpq.push(cand);
+		}
 	}
 }
 
 /**************************************************************************************
- 1. 函数功能: 根据规则和非终结符叶节点的翻译候选生成当前节点的候选
+ 1. 函数功能: 根据规则和规则目标端非终结符叶节点的翻译候选生成当前节点的候选
  2. 入口参数: a) 非终结符叶节点相同的规则列表 b) 使用的规则在规则列表中的排名
               c) 每个非终结符叶节点的翻译候选 d) 使用的每个翻译候选在它所在列表中的排名
  3. 出口参数: 指向新生成的候选的指针
@@ -337,44 +293,32 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 	}
 	
 	TgtRule &applied_rule = tgt_rules[rule_rank];
-
-	/*
-	cout<<"applying rule\n----------\n";  //dump rule tgt side, 4debug
-	cout<<tgt_vocab->get_word(applied_rule.tgt_root)<<endl;
-	for (size_t i=0; i<applied_rule.tgt_leaves.size(); i++)
-	{
-		cout<<tgt_vocab->get_word(applied_rule.tgt_leaves[i])<<' ';
-	}
-	cout<<"\n------------\n"<<flush;
-	*/
-
-	cand->tgt_root        = applied_rule.tgt_root;
-	cand->trans_probs     = applied_rule.probs;
-	size_t nt_idx = 0;
+	cand->tgt_root        = applied_rule.tgt_root;                                                           // 更新当前候选的目标端根节点
+	cand->trans_probs     = applied_rule.probs;                                                              // 初始化当前候选的翻译概率
+	size_t nt_idx         = 0;
 	for (size_t i=0; i<applied_rule.tgt_leaves.size(); i++)
 	{
 		if (applied_rule.aligned_src_positions[i] == -1)
 		{
-			cand->tgt_wids.push_back(applied_rule.tgt_leaves[i]);
+			cand->tgt_wids.push_back(applied_rule.tgt_leaves[i]);                                            // 将规则目标端的词加入当前候选的译文
 		}
 		else
 		{
 			Cand* subcand = cands_of_nt_leaves[nt_idx][cand_rank_vec[nt_idx]];
-			//cout<<"len of subcand: "<<subcand->tgt_wids.size()<<endl<<flush;  //4debug
-			cand->tgt_wids.insert( cand->tgt_wids.end(),subcand->tgt_wids.begin(),subcand->tgt_wids.end() );
-			cand->rule_num  += subcand->rule_num;
-			cand->grule_num += subcand->grule_num;
-			cand->crule_num += subcand->crule_num;
+			cand->tgt_wids.insert( cand->tgt_wids.end(),subcand->tgt_wids.begin(),subcand->tgt_wids.end() ); // 加入规则目标端非终结符的译文
+			cand->rule_num  += subcand->rule_num;                                                            // 累加所用的规则数量
+			cand->grule_num += subcand->grule_num;                                                           // 累加所用的glue规则数量
+			cand->crule_num += subcand->crule_num;                                                           // 累加所用的句法规则数量
 			for (size_t j=0; j<PROB_NUM; j++)
 			{
-				cand->trans_probs[j] += subcand->trans_probs[j];
+				cand->trans_probs[j] += subcand->trans_probs[j];                                             // 累加翻译概率
 			}
-			cand->lm_prob += subcand->lm_prob;
-			cand->score   += subcand->score;
+			cand->lm_prob += subcand->lm_prob;                                                               // 累加语言模型得分
+			cand->score   += subcand->score;                                                                 // 累加候选得分
 			nt_idx++;
 		}
 	}
-	double increased_lm_score = lm_model->cal_increased_lm_score(cand); 
+	double increased_lm_score = lm_model->cal_increased_lm_score(cand);                                      // 计算语言模型增量
 	cand->rule_num  += 1;
 	cand->crule_num += 1;
 	cand->lm_prob   += increased_lm_score;
@@ -383,53 +327,54 @@ Cand* SentenceTranslator::generate_cand_from_normal_rule(vector<TgtRule> &tgt_ru
 	return cand;
 }
 
+/**************************************************************************************
+ 1. 函数功能: 根据glue规则生成最优候选并加入candpq中
+ 2. 入口参数: 当前句法树节点
+ 3. 出口参数: 缓存当前节点翻译候选的candpq
+ 4. 算法简介: 见注释
+***************************************************************************************/
 void SentenceTranslator::add_best_cand_to_pq_with_glue_rule(Candpq &candpq,SyntaxNode* node)
 {
-	vector<vector<Cand*> > cands_of_leaves;                                // 存储规则源端所有叶节点的翻译候选
+	vector<vector<Cand*> > cands_of_leaves;                                        // 存储当前句法节点所有子节点的翻译候选
 	for (auto &syntax_leaf : node->children)
 	{
 		cands_of_leaves.push_back(syntax_leaf->cand_organizer.all_cands);
 	}
-	vector<int> cand_rank_vec(cands_of_leaves.size(),0);
-	Cand *glue_cand = generate_cand_from_glue_rule(cands_of_leaves,cand_rank_vec);
+	vector<int> cand_rank_vec(cands_of_leaves.size(),0);                           // 取每个子节点的最好候选
+	Cand *glue_cand = generate_cand_from_glue_rule(cands_of_leaves,cand_rank_vec); // 将子节点候选顺序拼接生前glue候选
 	candpq.push(glue_cand);
 }
 
+/**************************************************************************************
+ 1. 函数功能: 根据glue规则和当前句法节点的所有子节点的翻译候选生成当前节点的候选
+ 2. 入口参数: a) 当前句法节点的每个子节点的翻译候选列表 b) 使用的候选在所在列表中的排名
+ 3. 出口参数: 指向新生成的候选的指针
+ 4. 算法简介: 将当前句法节点的所有子节点的翻译候选顺序拼接即可
+***************************************************************************************/
 Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &cands_of_leaves, vector<int> &cand_rank_vec)
 {
 	Cand *glue_cand = new Cand;
 	glue_cand->type = GLUE;
-	glue_cand->cands_of_nt_leaves = cands_of_leaves;
-	glue_cand->cand_rank_vec      = cand_rank_vec;
+	glue_cand->cands_of_nt_leaves = cands_of_leaves;                                                               // 记录当每个叶节点的候选列表
+	glue_cand->cand_rank_vec      = cand_rank_vec;                                                                 // 记录所用候选在列表中的排名
 	glue_cand->tgt_root           = tgt_vocab->get_id("X-X-X");
 
-	/*
-	cout<<"applying glue rule\n----------\n";  //dump glue rule tgt side, 4debug
-	cout<<"X-X-X"<<endl;
 	for (size_t i=0; i<cands_of_leaves.size(); i++)
 	{
 		Cand *subcand = cands_of_leaves[i][cand_rank_vec[i]];
-		cout<<tgt_vocab->get_word(subcand->tgt_root)<<' ';
-	}
-	cout<<"\n------------\n"<<flush;
-	*/
-
-	for (size_t i=0; i<cands_of_leaves.size(); i++)
-	{
-		Cand *subcand = cands_of_leaves[i][cand_rank_vec[i]];
-		glue_cand->tgt_root_of_leaf_cands.push_back(subcand->tgt_root);
-		glue_cand->tgt_wids.insert( glue_cand->tgt_wids.end(),subcand->tgt_wids.begin(),subcand->tgt_wids.end() );
-		glue_cand->rule_num  += subcand->rule_num;
-		glue_cand->crule_num += subcand->crule_num;
-		glue_cand->grule_num += subcand->grule_num;
+		glue_cand->tgt_root_of_leaf_cands.push_back(subcand->tgt_root);                                            // 记录叶节点候选的根节点
+		glue_cand->tgt_wids.insert( glue_cand->tgt_wids.end(),subcand->tgt_wids.begin(),subcand->tgt_wids.end() ); // 顺序拼接叶节点译文
+		glue_cand->rule_num  += subcand->rule_num;                                                                 // 累加所用的规则数量
+		glue_cand->crule_num += subcand->crule_num;                                                                // 累加所用的句法规则数量
+		glue_cand->grule_num += subcand->grule_num;                                                                // 累加所用的glue规则数量
 		for (size_t j=0; j<PROB_NUM; j++)
 		{
-			glue_cand->trans_probs[j] += subcand->trans_probs[j];
+			glue_cand->trans_probs[j] += subcand->trans_probs[j];                                                  // 累加翻译概率
 		}
-		glue_cand->lm_prob += subcand->lm_prob;
-		glue_cand->score   += subcand->score;
+		glue_cand->lm_prob += subcand->lm_prob;                                                                    // 累加语言模型得分
+		glue_cand->score   += subcand->score;                                                                      // 累加候选得分
 	}
-	double increased_lm_score = lm_model->cal_increased_lm_score(glue_cand);
+	double increased_lm_score = lm_model->cal_increased_lm_score(glue_cand);                                       // 计算语言模型增量
 	glue_cand->lm_prob  += increased_lm_score;
 	glue_cand->rule_num +=  1;
 	glue_cand->grule_num +=  1;
@@ -437,6 +382,13 @@ Cand* SentenceTranslator::generate_cand_from_glue_rule(vector<vector<Cand*> > &c
 	return glue_cand;
 }
 
+/**************************************************************************************
+ 1. 函数功能: 通过立方体剪枝为当前句法节点生成更多候选
+ 2. 入口参数: 当前句法树节点
+ 3. 出口参数: 缓存当前节点翻译候选的candpq
+ 4. 算法简介: 每次取出candpq中的最好候选加入当前句法节点的cand_organizer, 然后最好候选的
+              邻居加入candpq
+***************************************************************************************/
 void SentenceTranslator::extend_cand_by_cube_pruning(Candpq &candpq, SyntaxNode* node)
 {
 	set<vector<int> > duplicate_set;
@@ -459,7 +411,7 @@ void SentenceTranslator::extend_cand_by_cube_pruning(Candpq &candpq, SyntaxNode*
  1. 函数功能: 将当前候选的邻居加入candpq中
  2. 入口参数: 当前候选, 检查是否重复扩展的duplicate_set
  3. 出口参数: 更新后的candpq
- 4. 算法简介: a) 对于glue规则生成的候选, 考虑它所有叶节点的下一位候选
+ 4. 算法简介: a) 对于glue规则生成的候选, 考虑它所有非终结符叶节点的下一位候选
               b) 对于普通规则生成的候选, 考虑叶节点候选的下一位以及规则的下一位
 ***************************************************************************************/
 void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, set<vector<int> > &duplicate_set)
@@ -473,7 +425,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 		if ( cur_cand->cand_rank_vec[i]+1 < cur_cand->cands_of_nt_leaves[i].size() )
 		{
 			vector<int> new_cand_rank_vec = cur_cand->cand_rank_vec;
-			new_cand_rank_vec[i]++;
+			new_cand_rank_vec[i]++;                        // 考虑当前非终结符叶节点候选的下一位
 			vector<int> new_key = base_key;
 			if (cur_cand->type == NORMAL)
 			{
@@ -513,15 +465,22 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 	}
 }
 
+/**************************************************************************************
+ 1. 函数功能: 根据一元规则为当前句法节点生成更多候选
+ 2. 入口参数: 一元规则的匹配信息
+ 3. 出口参数: 无
+ 4. 算法简介: 将一元规则两端的词汇加到已有候选两端生成新的候选, 
+              并加入当前句法节点的cand_organizer中
+***************************************************************************************/
 void SentenceTranslator::extend_cand_with_unary_rule(RuleMatchInfo &rule_match_info)
 {
 	vector<Cand*> old_cands = rule_match_info.syntax_root->cand_organizer.all_cands;
-	for (auto &cand : old_cands)
+	for (auto &cand : old_cands)                                                  // 遍历已有的候选
 	{
-		if ( cand->tgt_root == tgt_vocab->get_id("X-X-X") )
+		if ( cand->tgt_root == tgt_vocab->get_id("X-X-X") )                       // 跳过glue规则生成的候选
 			continue;
 		vector<int> tgt_root_id = {cand->tgt_root,0};
-		auto it = rule_match_info.rule_node->tgt_rule_group.find(tgt_root_id);
+		auto it = rule_match_info.rule_node->tgt_rule_group.find(tgt_root_id);    // 查找一元规则是否有匹配的目标端
 		if ( it == rule_match_info.rule_node->tgt_rule_group.end() )
 			continue;
 		vector<TgtRule> &tgt_rules = it->second;

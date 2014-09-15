@@ -176,6 +176,7 @@ void translate_file(const Models &models, const Parameter &para, const Weight &w
 	{
 		SentenceTranslator sen_translator(models,para,weight,input_sen.at(i));
 		output_sen.at(i) = sen_translator.translate_sentence();
+		cout<<"translated sen "<<i<<endl;
 		if (para.PRINT_NBEST == true)
 		{
 			nbest_tune_info_list.at(i) = sen_translator.get_tune_info(i);

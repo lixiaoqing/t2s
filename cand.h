@@ -18,7 +18,8 @@ struct Cand
 
 	//来源信息, 记录候选是如何生成的
 	CandType type;                                 // 候选的类型(1.由OOV生成; 2.由普通规则生成; 3.由glue规则生成)
-	RuleTrieNode* src_rule;                        // 生成当前候选的规则的源端
+	string syntax_node_info;                       // 当前候选所对应的句法节点, 输出规则信息时用
+	RuleTrieNode* rule_node;                       // 生成当前候选的规则的源端
 	vector<TgtRule>* matched_tgt_rules;            // 目标端非终结符相同的一组规则
 	int rule_rank;                                 // 当前候选所用的规则在matched_tgt_rules中的排名
 	vector<vector<Cand*> > cands_of_nt_leaves;     // 规则源端非终结符叶节点的翻译候选(glue规则所有叶节点均为非终结符)
@@ -41,7 +42,7 @@ struct Cand
 		lm_prob = 0.0;
 
 		type = INIT;
-		src_rule = NULL;
+		rule_node = NULL;
 		matched_tgt_rules = NULL;
 		rule_rank = 0;
 		cands_of_nt_leaves.clear();
@@ -61,7 +62,7 @@ struct Cand
 		lm_prob = 0.0;
 
 		type = INIT;
-		src_rule = NULL;
+		rule_node = NULL;
 		matched_tgt_rules = NULL;
 		rule_rank = 0;
 		cands_of_nt_leaves.resize(0);

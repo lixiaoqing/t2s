@@ -37,7 +37,7 @@ vector<TuneInfo> SentenceTranslator::get_tune_info(size_t sen_id)
 {
 	vector<TuneInfo> nbest_tune_info;
 	vector<Cand*> &final_cands = src_tree->root->cand_organizer.all_cands;
-	for (size_t i=0;i< (final_cands.size()<para.NBEST_NUM?final_cands.size():para.NBEST_NUM);i++)
+	for (size_t i=0;i< min(final_cands.size(),(size_t)para.NBEST_NUM);i++)
 	{
 		TuneInfo tune_info;
 		tune_info.sen_id = sen_id;
@@ -73,6 +73,8 @@ vector<string> SentenceTranslator::get_applied_rules(size_t sen_id)
 ***************************************************************************************/
 void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 {
+	cout<<"dumping rule at node "<<cand->syntax_node_info<<endl;
+	cout<<"cand type "<<cand->type<<endl;
 	string applied_rule;
 	if (cand->type == OOV)
 	{
@@ -81,8 +83,10 @@ void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 	else if (cand->type == GLUE)
 	{
 		applied_rule = "GLUE => ";
+		assert ( cand->cands_of_nt_leaves.size() == cand->cand_rank_vec.size() );  //4debug
 		for (size_t i=0; i<cand->cand_rank_vec.size(); i++)
 		{
+			assert ( cand->cands_of_nt_leaves.at(i).size() > cand->cand_rank_vec.at(i) );  //4debug
 			dump_rules(applied_rules, cand->cands_of_nt_leaves[i][cand->cand_rank_vec[i]]);
 			applied_rule += tgt_vocab->get_word( cand->cands_of_nt_leaves[i][cand->cand_rank_vec[i]]->tgt_root ) + " ";
 		}
@@ -90,11 +94,44 @@ void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 	}
 	else
 	{
+		assert ( cand->cands_of_nt_leaves.size() == cand->cand_rank_vec.size() );  //4debug
 		for (size_t i=0; i<cand->cand_rank_vec.size(); i++)
 		{
+			assert ( cand->cands_of_nt_leaves.at(i).size() > cand->cand_rank_vec.at(i) );  //4debug
+			if ( cand == cand->cands_of_nt_leaves[i][cand->cand_rank_vec[i]] )
+			{
+				RuleTrieNode *cur_rule_node = cand->rule_node;
+				vector<string> src_rule;
+				while (cur_rule_node->father != NULL)
+				{
+					src_rule.push_back(cur_rule_node->rule_level_str);
+					cur_rule_node = cur_rule_node->father;
+				}
+				for (int i=src_rule.size()-1;i>=0;i--)
+				{
+					applied_rule += src_rule[i] + "\n";
+				}
+				applied_rule += "@@@\n";
+				assert ( cand->matched_tgt_rules->size() > cand->rule_rank );  //4debug
+				TgtRule tgt_rule = cand->matched_tgt_rules->at(cand->rule_rank);
+				applied_rule += tgt_vocab->get_word(tgt_rule.tgt_root) + "\n";
+				for (auto wid : tgt_rule.tgt_leaves)
+				{
+					applied_rule += tgt_vocab->get_word(wid) + " ";
+				}
+				applied_rule += "\n";
+				assert ( tgt_rule.tgt_leaves.size() == tgt_rule.aligned_src_positions.size() );  //4debug
+				for (auto aligned_pos : tgt_rule.aligned_src_positions)
+				{
+					applied_rule += to_string(aligned_pos) + " ";
+				}
+				applied_rule += "\n";
+				cout<<applied_rule<<flush;
+			}
+			assert ( cand != cand->cands_of_nt_leaves[i][cand->cand_rank_vec[i]] );  //4debug
 			dump_rules(applied_rules, cand->cands_of_nt_leaves[i][cand->cand_rank_vec[i]]);
 		}
-		RuleTrieNode *cur_rule_node = cand->src_rule;
+		RuleTrieNode *cur_rule_node = cand->rule_node;
 		vector<string> src_rule;
 		while (cur_rule_node->father != NULL)
 		{
@@ -106,6 +143,7 @@ void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 			applied_rule += src_rule[i] + "\n";
 		}
 		applied_rule += "@@@\n";
+		assert ( cand->matched_tgt_rules->size() > cand->rule_rank );  //4debug
 		TgtRule tgt_rule = cand->matched_tgt_rules->at(cand->rule_rank);
 		applied_rule += tgt_vocab->get_word(tgt_rule.tgt_root) + "\n";
 		for (auto wid : tgt_rule.tgt_leaves)
@@ -113,12 +151,14 @@ void SentenceTranslator::dump_rules(vector<string> &applied_rules, Cand *cand)
 			applied_rule += tgt_vocab->get_word(wid) + " ";
 		}
 		applied_rule += "\n";
+		assert ( tgt_rule.tgt_leaves.size() == tgt_rule.aligned_src_positions.size() );  //4debug
 		for (auto aligned_pos : tgt_rule.aligned_src_positions)
 		{
 			applied_rule += to_string(aligned_pos) + " ";
 		}
 		applied_rule += "\n";
 	}
+	cout<<applied_rule<<endl;  //4debug
 	applied_rules.push_back(applied_rule);
 }
 
@@ -190,6 +230,10 @@ void SentenceTranslator::generate_kbest_for_node(SyntaxNode* node)
 		}
 	}
 	node->cand_organizer.sort_and_group_cands();                                           // 对候选进行排序和分组
+	for (auto cand : node->cand_organizer.all_cands)
+	{
+		cand->syntax_node_info = node->label+"("+to_string(node->span_lbound)+","+to_string(node->span_rbound)+")";
+	}
 }
 
 /**************************************************************************************
@@ -208,8 +252,8 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 		oov_cand->score += w*LogP_PseudoZero;
 	}
 	oov_cand->tgt_root     = tgt_vocab->get_id("NN");
-	//oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
-	oov_cand->tgt_wids     = {tgt_vocab->get_id(node->children[0]->label)};
+	oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
+	//oov_cand->tgt_wids     = {tgt_vocab->get_id(node->children[0]->label)};
 	oov_cand->rule_num     = 1;
 	oov_cand->crule_num    = 1;
 	oov_cand->lm_prob      = lm_model->cal_increased_lm_score(oov_cand);
@@ -265,7 +309,7 @@ void SentenceTranslator::add_best_cand_to_pq_with_normal_rule(Candpq &candpq, Ru
 		{
 			vector<int> rank_vec(cands_of_nt_leaves.size(),0);
 			Cand *cand = generate_cand_from_normal_rule(kvp.second,0,cands_of_nt_leaves,rank_vec); // 根据规则和叶节点候选生成当前节点的候选
-			cand->src_rule = rule_match_info.rule_node;
+			cand->rule_node = rule_match_info.rule_node;
 			candpq.push(cand);
 		}
 	}
@@ -438,7 +482,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 				if (cur_cand->type == NORMAL)              // 普通规则生成的候选
 				{
 					new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank,cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
-					new_cand->src_rule = cur_cand->src_rule;
+					new_cand->rule_node = cur_cand->rule_node;
 				}
 				else if (cur_cand->type == GLUE)          // glue规则生成的候选
 				{
@@ -458,7 +502,7 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 		if (duplicate_set.count(new_key) == 0)
 		{
 			Cand *new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank+1,cur_cand->cands_of_nt_leaves,cur_cand->cand_rank_vec);
-			new_cand->src_rule = cur_cand->src_rule;
+			new_cand->rule_node = cur_cand->rule_node;
 			candpq.push(new_cand);
 			duplicate_set.insert(new_key);
 		}
@@ -489,7 +533,7 @@ void SentenceTranslator::extend_cand_with_unary_rule(RuleMatchInfo &rule_match_i
 		for (size_t rule_rank=0;rule_rank<tgt_rules.size();rule_rank++)
 		{
 			Cand *new_cand = generate_cand_from_normal_rule(tgt_rules,rule_rank,cands_of_nt_leaves,cand_rank_vec);
-			new_cand->src_rule = cand->src_rule;
+			new_cand->rule_node = cand->rule_node;
 			bool flag = rule_match_info.syntax_root->cand_organizer.add(new_cand);
 			if (flag == false)
 			{
@@ -538,7 +582,6 @@ void SentenceTranslator::push_matched_rules_at_next_level(vector<RuleMatchInfo> 
 	for (auto &kvp : cur_match_info.rule_node->subtrie_map)
 	{
 		vector<string> nodes_vec = Split(kvp.first,"|||");                         // 记录当前规则源端每个叶节点扩展出来的节点
-		assert( nodes_vec.size() == cur_match_info.syntax_leaves.size() );
 		vector<SyntaxNode*> new_leaves;
 		RuleMatchInfo new_match_info;
 		for(size_t i=0; i<cur_match_info.syntax_leaves.size(); i++)

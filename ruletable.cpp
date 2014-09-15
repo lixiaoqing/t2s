@@ -4,7 +4,6 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 {
 	for (auto &tgt_rule : tgt_rules)
 	{
-		assert ( tgt_rule.group_id.empty() );
 		for (size_t i=0; i<tgt_rule.aligned_src_positions.size(); i++)        // 遍历规则目标端叶节点
 		{
 			if (tgt_rule.aligned_src_positions[i] == -1)                      // 跳过词汇节点
@@ -29,13 +28,6 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 	{
 		sort( kvp.second.begin(), kvp.second.end() );
 		reverse( kvp.second.begin(), kvp.second.end() );
-		/*
-		for (auto &tgt_rule : kvp.second)  //4debug
-		{
-			cout<<tgt_rule.score<<' ';
-		}
-		cout<<endl;
-		*/
 	}
 
 	proc_flag = true;
@@ -97,7 +89,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		fin.read((char*)&tgt_rule.is_composed_rule,sizeof(short int));
 		fin.read((char*)&tgt_rule.is_lexical_rule,sizeof(short int));
 
-		if (true)
+		if (false)
 		{
 			for (auto id : rulenode_ids)
 			{

@@ -8,7 +8,7 @@ bool larger( const Cand *pl, const Cand *pr )
 /************************************************************************
  1. 函数功能: 将翻译候选加入列表中, 并进行假设重组
  2. 入口参数: 翻译候选的指针
- 3. 出口参数: 如果候选被丢弃或者替换掉原来的候选,返回false;否则返回true
+ 3. 出口参数: 如果候选被丢弃,返回false;否则返回true
  4. 算法简介: a) 如果当前候选与优先级队列中的某个候选的目标端边界词相同,
               a.1) 如果当前候选的得分低, 则丢弃当前候选
               a.2) 如果当前候选的得分低, 则替换原候选
@@ -16,24 +16,25 @@ bool larger( const Cand *pl, const Cand *pr )
               b) 如果当前候选与优先级队列中的所有候选的目标端边界词不同,
 	         则将当前候选加入列表
  * **********************************************************************/
-bool CandOrganizer::add(Cand *cand_ptr)
+bool CandOrganizer::add(Cand *&cand)
 { 
-	for (auto &e_cand_ptr : all_cands)
+	for (auto &e_cand : all_cands)
 	{
-		if (is_bound_same(cand_ptr,e_cand_ptr))
+		if ( is_bound_same(cand,e_cand) && cand->tgt_root == e_cand->tgt_root )
 		{
-			if (cand_ptr->score <= e_cand_ptr->score)
+			if (cand->score <= e_cand->score)
 			{
 				return false;
 			}
-			if (cand_ptr->score > e_cand_ptr->score)
+			if (cand->score > e_cand->score)
 			{
-				*e_cand_ptr = *cand_ptr;
-				return false;
+				recombined_cands.push_back(e_cand);
+				swap(e_cand,cand);
+				return true;
 			}
 		}
 	}
-	all_cands.push_back(cand_ptr); 
+	all_cands.push_back(cand); 
 	return true;
 }
 

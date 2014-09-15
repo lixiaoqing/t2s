@@ -94,14 +94,19 @@ class CandOrganizer
 			{
 				delete cand;
 			}
+			for (auto cand : recombined_cands)
+			{
+				delete cand;
+			}
 		}
-		bool add(Cand *cand_ptr);
+		bool add(Cand *&cand_ptr);
 		void sort_and_group_cands();
 	private:
 		bool is_bound_same(const Cand *a, const Cand *b);
 
 	public:
 		vector<Cand*> all_cands;                         // 当前节点所有的翻译候选
+		vector<Cand*> recombined_cands;                  // 被重组的翻译候选, 回溯查看所用规则的时候使用
 		map<int,vector<Cand*> > tgt_root_to_cand_group;  // 将当前节点的翻译候选按照目标端的根节点进行分组
 		map<string,int> recombine_info_to_cand_idx;      // 根据重组信息(由边界词与目标端根节点组成)找候选在all_cands中的序号
 	                                                     // 以查找新候选是否跟已有候选重复, 如有重复则进行假设重组

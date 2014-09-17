@@ -7,7 +7,7 @@ struct TgtRule
 {
 	bool operator<(const TgtRule &rhs) const{return score < rhs.score;};
 	int word_num;                               // 规则目标端的单词数
-	int tgt_root;                               // 规则目标端根节点的标签
+	int tgt_root;                               // 规则目标端根节点的标签  TODO: 对t2s系统没用
 	vector<int> tgt_leaves;                     // 规则目标端叶节点的单词或非终结符的id序列
 	vector<int> aligned_src_positions;          // 规则目标端的单词或非终结符在规则源端句法树片段叶节点序列中的位置, 单词对应-1
 	vector<int> group_id;                       // 规则目标端叶节点的非终结符及其对齐所构成的规则分组标识符
@@ -23,15 +23,13 @@ class RuleTrieNode
 	public:
 		RuleTrieNode()
 		{
-			proc_flag = false;
 			father = NULL;
 		}
 		void group_and_sort_tgt_rules();
 	public:
-		bool proc_flag;                                        // 该Trie节点的规则是否已被处理(分组和排序)过
 		vector<TgtRule> tgt_rules;                             // 一个规则源端对应的所有目标端
 		map <vector<int>, vector<TgtRule> > tgt_rule_group;    // 根据规则目标端叶节点的句法标签对规则进行分组, 对s2t/t2t系统有用
-		map <string, RuleTrieNode*> subtrie_map;               // 当前规则节点到下个规则节点的转换表
+		map <string, RuleTrieNode*> subtrie_map;               // 当前规则节点到下个规则节点的转换表, key为句法树的一层
 		RuleTrieNode *father;                                  // 当前规则节点的父节点, 调试时打印规则用
 		string rule_level_str;                                 // 当前规则节点对应的源端句法树(填充过的, 所有叶节点位于同一层)的最下一层
 };

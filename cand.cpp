@@ -20,7 +20,7 @@ bool CandOrganizer::add(Cand *&cand)
 { 
 	for (auto &e_cand : all_cands)
 	{
-		if ( is_bound_same(cand,e_cand) && cand->tgt_root == e_cand->tgt_root )
+		if ( is_bound_same(cand,e_cand) )
 		{
 			if (cand->score <= e_cand->score)
 			{
@@ -54,23 +54,5 @@ bool CandOrganizer::is_bound_same(const Cand *a, const Cand *b)
 			return false;
 	}
 	return true;
-}
-
-void CandOrganizer::sort_and_group_cands()
-{
-	sort(all_cands.begin(),all_cands.end(),larger);
-	for (auto cand : all_cands)
-	{
-		auto it = tgt_root_to_cand_group.find(cand->tgt_root);
-		if ( it == tgt_root_to_cand_group.end() )
-		{
-			vector<Cand*> cand_vec = {cand};
-			tgt_root_to_cand_group.insert( make_pair(cand->tgt_root,cand_vec) );
-		}
-		else
-		{
-			it->second.push_back(cand);
-		}
-	}
 }
 

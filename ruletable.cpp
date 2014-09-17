@@ -8,7 +8,7 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 		{
 			if (tgt_rule.aligned_src_positions[i] == -1)                      // 跳过词汇节点
 				continue;
-			tgt_rule.group_id.push_back(tgt_rule.tgt_leaves[i]);              // 非终结符
+			//tgt_rule.group_id.push_back(tgt_rule.tgt_leaves[i]);              // 非终结符 TODO: 对t2s系统没用
 			tgt_rule.group_id.push_back(tgt_rule.aligned_src_positions[i]);   // 非终结符在源端句法树片段叶节点中对应的位置
 		}
 
@@ -29,8 +29,6 @@ void RuleTrieNode::group_and_sort_tgt_rules()
 		sort( kvp.second.begin(), kvp.second.end() );
 		reverse( kvp.second.begin(), kvp.second.end() );
 	}
-
-	proc_flag = true;
 }
 
 RuleTable::RuleTable(const size_t size_limit,bool load_alignment,const Weight &i_weight,const string &rule_table_file,Vocab *i_src_vocab, Vocab* i_tgt_vocab)

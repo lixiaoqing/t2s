@@ -2,8 +2,16 @@
 
 SyntaxTree::SyntaxTree(const string &line_of_tree)
 {
-	build_tree_from_str(line_of_tree);
-	update_attrib(root);
+	if (line_of_tree.size() > 3)
+	{
+		build_tree_from_str(line_of_tree);
+		update_attrib(root);
+	}
+	else
+	{
+		root = NULL;
+		sen_len = 0;
+	}
 	//dump(root);
 }
 

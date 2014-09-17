@@ -212,8 +212,8 @@ void SentenceTranslator::add_cand_for_oov(SyntaxNode *node)
 		oov_cand->score += w*LogP_PseudoZero;
 	}
 	oov_cand->tgt_root     = tgt_vocab->get_id("NN");
-	oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
-	//oov_cand->tgt_wids     = {tgt_vocab->get_id(node->children[0]->label)};
+	//oov_cand->tgt_wids     = {tgt_vocab->get_id("NULL")};
+	oov_cand->tgt_wids     = {tgt_vocab->get_id(node->children[0]->label)};
 	oov_cand->rule_num     = 1;
 	oov_cand->crule_num    = 1;
 	oov_cand->lm_prob      = lm_model->cal_increased_lm_score(oov_cand);

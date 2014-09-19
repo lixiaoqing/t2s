@@ -374,8 +374,8 @@ void SentenceTranslator::extend_cand_by_cube_pruning(Candpq &candpq, SyntaxNode*
 			break;
 		Cand *best_cand = candpq.top();
 		candpq.pop();
-		bool flag = node->cand_organizer.add(best_cand);
 		add_neighbours_to_pq(candpq,best_cand,duplicate_set);
+		bool flag = node->cand_organizer.add(best_cand);
 		if (flag == false)
 		{
 			delete best_cand;
@@ -399,13 +399,21 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 		{
 			vector<int> new_cand_rank_vec = cur_cand->cand_rank_vec;
 			new_cand_rank_vec[i]++;                        // 考虑当前非终结符叶节点候选的下一位
-			vector<int> new_key;
+			vector<int> key;                               // key用来检查是否被重复扩展, 由[规则排名; 规则中非终结符的对齐]和候选排名组成
 			if (cur_cand->type == NORMAL)
 			{
-				new_key.push_back(cur_cand->rule_rank);
+				key.push_back(cur_cand->rule_rank);
+				TgtRule &applied_rule = cur_cand->matched_tgt_rules->at(cur_cand->rule_rank);
+				for (auto aligned_pos : applied_rule.aligned_src_positions)
+				{
+					if (aligned_pos != -1)
+					{
+						key.push_back(aligned_pos);
+					}
+				}
 			}
-			new_key.insert( new_key.end(),new_cand_rank_vec.begin(),new_cand_rank_vec.end() );  //TODO 似乎应该考虑非终结符的对齐
-			if (duplicate_set.count(new_key) == 0)
+			key.insert( key.end(),new_cand_rank_vec.begin(),new_cand_rank_vec.end() );
+			if (duplicate_set.count(key) == 0)
 			{
 				Cand *new_cand;
 				if (cur_cand->type == NORMAL)              // 普通规则生成的候选
@@ -418,22 +426,22 @@ void SentenceTranslator::add_neighbours_to_pq(Candpq &candpq, Cand* cur_cand, se
 					new_cand = generate_cand_from_glue_rule(cur_cand->cands_of_nt_leaves,new_cand_rank_vec);
 				}
 				candpq.push(new_cand);
-				duplicate_set.insert(new_key);
+				duplicate_set.insert(key);
 			}
 		}
 	}
     // 对普通规则生成的候选, 考虑规则的下一位
 	if ( cur_cand->type == NORMAL && cur_cand->rule_rank+1<cur_cand->matched_tgt_rules->size() )
 	{
-		vector<int> new_key;
-		new_key.push_back(cur_cand->rule_rank+1);
-		new_key.insert( new_key.end(),cur_cand->cand_rank_vec.begin(),cur_cand->cand_rank_vec.end() );
-		if (duplicate_set.count(new_key) == 0)
+		vector<int> key;
+		key.push_back(cur_cand->rule_rank+1);
+		key.insert( key.end(),cur_cand->cand_rank_vec.begin(),cur_cand->cand_rank_vec.end() );
+		if (duplicate_set.count(key) == 0)
 		{
 			Cand *new_cand = generate_cand_from_normal_rule(*(cur_cand->matched_tgt_rules),cur_cand->rule_rank+1,cur_cand->cands_of_nt_leaves,cur_cand->cand_rank_vec);
 			new_cand->rule_node = cur_cand->rule_node;
 			candpq.push(new_cand);
-			duplicate_set.insert(new_key);
+			duplicate_set.insert(key);
 		}
 	}
 }

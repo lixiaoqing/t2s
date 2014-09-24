@@ -24,8 +24,6 @@ struct Cand
 	vector<vector<Cand*> > cands_of_nt_leaves;     // 规则源端非终结符叶节点的翻译候选(glue规则所有叶节点均为非终结符)
 	vector<int> cand_rank_vec;                     // 记录当前候选所用的每个非终结符叶节点的翻译候选的排名
 	int rule_num;                                  // 使用的规则的数量
-	int grule_num;                                 // 使用的glue规则的数量
-	int crule_num;                                 // 使用的compose规则的数量
 
 	//语言模型状态信息
 	lm::ngram::ChartState lm_state;
@@ -45,8 +43,6 @@ struct Cand
 		cands_of_nt_leaves.clear();
 		cand_rank_vec.clear();
 		rule_num  = 0;
-		grule_num = 0;
-		crule_num = 0;
 	}
 	~Cand ()
 	{
@@ -63,8 +59,6 @@ struct Cand
 		cands_of_nt_leaves.resize(0);
 		cand_rank_vec.resize(0);
 		rule_num  = 0;
-		grule_num = 0;
-		crule_num = 0;
 	}
 };
 

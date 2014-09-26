@@ -84,7 +84,7 @@ void RuleTable::load_rule_table(const string &rule_table_file)
 		fin.read((char*)&(tgt_rule.probs[0]),sizeof(double)*PROB_NUM);
 		for (auto &prob : tgt_rule.probs)
 		{
-			prob = log10(prob);
+			prob = max( LogP_PseudoZero,log10(prob) );
 		}
 
 		// 规则类型
